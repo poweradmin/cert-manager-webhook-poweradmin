@@ -19,6 +19,68 @@ func setupTestServerWithVersion(t *testing.T, handler http.HandlerFunc, apiVersi
 	return server, client
 }
 
+// writeV2ZonesResponse writes a wrapped v2 zones response.
+func writeV2ZonesResponse(w http.ResponseWriter, zones []Zone) {
+	w.Header().Set("Content-Type", "application/json")
+	zonesData, _ := json.Marshal(zones)
+	resp := apiResponse{
+		Success: true,
+		Data:    json.RawMessage(`{"zones":` + string(zonesData) + `}`),
+		Message: "Zones retrieved successfully",
+	}
+	_ = json.NewEncoder(w).Encode(resp)
+}
+
+// writeV1ZonesResponse writes a wrapped v1 zones response.
+func writeV1ZonesResponse(w http.ResponseWriter, zones []Zone) {
+	w.Header().Set("Content-Type", "application/json")
+	zonesData, _ := json.Marshal(zones)
+	resp := apiResponse{
+		Success: true,
+		Data:    zonesData,
+		Message: "Zones retrieved successfully",
+	}
+	_ = json.NewEncoder(w).Encode(resp)
+}
+
+// writeRecordsResponse writes a wrapped records response (same for v1 and v2).
+func writeRecordsResponse(w http.ResponseWriter, records []Record) {
+	w.Header().Set("Content-Type", "application/json")
+	recordsData, _ := json.Marshal(records)
+	resp := apiResponse{
+		Success: true,
+		Data:    recordsData,
+		Message: "Records retrieved successfully",
+	}
+	_ = json.NewEncoder(w).Encode(resp)
+}
+
+// writeV2CreateRecordResponse writes a wrapped v2 create-record response.
+func writeV2CreateRecordResponse(w http.ResponseWriter, record Record) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	recordData, _ := json.Marshal(record)
+	resp := apiResponse{
+		Success: true,
+		Data:    json.RawMessage(`{"record":` + string(recordData) + `}`),
+		Message: "Record created successfully",
+	}
+	_ = json.NewEncoder(w).Encode(resp)
+}
+
+// writeV1CreateRecordResponse writes a wrapped v1 create-record response.
+func writeV1CreateRecordResponse(w http.ResponseWriter, record Record) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	recordData, _ := json.Marshal(record)
+	resp := apiResponse{
+		Success: true,
+		Data:    recordData,
+		Message: "Record created successfully",
+	}
+	_ = json.NewEncoder(w).Encode(resp)
+}
+
 func TestNewClient(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -48,8 +110,7 @@ func TestServerURLNormalization(t *testing.T) {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode([]Zone{{ID: 1, Name: "example.com"}})
+		writeV2ZonesResponse(w, []Zone{{ID: 1, Name: "example.com"}})
 	}
 
 	server := httptest.NewServer(http.HandlerFunc(handler))
@@ -93,8 +154,7 @@ func TestGetZoneByName(t *testing.T) {
 			return
 		}
 		if r.URL.Path == "/api/v2/zones" {
-			w.Header().Set("Content-Type", "application/json")
-			_ = json.NewEncoder(w).Encode(zones)
+			writeV2ZonesResponse(w, zones)
 			return
 		}
 		w.WriteHeader(http.StatusNotFound)
@@ -124,8 +184,7 @@ func TestListTXTRecords(t *testing.T) {
 
 	handler := func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/api/v2/zones/1/records" && r.URL.Query().Get("type") == "TXT" {
-			w.Header().Set("Content-Type", "application/json")
-			_ = json.NewEncoder(w).Encode(records)
+			writeRecordsResponse(w, records)
 			return
 		}
 		w.WriteHeader(http.StatusNotFound)
@@ -160,9 +219,7 @@ func TestCreateTXTRecord(t *testing.T) {
 				t.Errorf("expected name=_acme-challenge.example.com, got %v", body["name"])
 			}
 
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusCreated)
-			_ = json.NewEncoder(w).Encode(Record{
+			writeV2CreateRecordResponse(w, Record{
 				ID: 20, Name: "_acme-challenge.example.com",
 				Type: "TXT", Content: "\"test-key\"", TTL: 120,
 			})
@@ -209,12 +266,11 @@ func TestV1Paths(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		switch {
 		case r.URL.Path == "/api/v1/zones":
-			_ = json.NewEncoder(w).Encode([]Zone{{ID: 1, Name: "example.com"}})
+			writeV1ZonesResponse(w, []Zone{{ID: 1, Name: "example.com"}})
 		case r.URL.Path == "/api/v1/zones/1/records" && r.Method == http.MethodGet:
-			_ = json.NewEncoder(w).Encode([]Record{})
+			writeRecordsResponse(w, []Record{})
 		case r.URL.Path == "/api/v1/zones/1/records" && r.Method == http.MethodPost:
-			w.WriteHeader(http.StatusCreated)
-			_ = json.NewEncoder(w).Encode(Record{ID: 1})
+			writeV1CreateRecordResponse(w, Record{ID: 1})
 		case r.URL.Path == "/api/v1/zones/1/records/1" && r.Method == http.MethodDelete:
 			w.WriteHeader(http.StatusNoContent)
 		default:
@@ -253,8 +309,7 @@ func TestAuthHeader(t *testing.T) {
 	var receivedKey string
 	handler := func(w http.ResponseWriter, r *http.Request) {
 		receivedKey = r.Header.Get("X-API-Key")
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode([]Zone{})
+		writeV2ZonesResponse(w, []Zone{})
 	}
 
 	_, client := setupTestServerWithVersion(t, handler, "v2")
@@ -297,8 +352,7 @@ func TestHTTPErrors(t *testing.T) {
 
 func TestGetZones_EmptyResponse(t *testing.T) {
 	handler := func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode([]Zone{})
+		writeV2ZonesResponse(w, []Zone{})
 	}
 
 	_, client := setupTestServerWithVersion(t, handler, "v2")
@@ -326,8 +380,7 @@ func TestGetZones_InvalidJSON(t *testing.T) {
 
 func TestListTXTRecords_EmptyZone(t *testing.T) {
 	handler := func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode([]Record{})
+		writeRecordsResponse(w, []Record{})
 	}
 
 	_, client := setupTestServerWithVersion(t, handler, "v2")
@@ -381,8 +434,7 @@ func TestRequestContentType(t *testing.T) {
 	handler := func(w http.ResponseWriter, r *http.Request) {
 		receivedContentType = r.Header.Get("Content-Type")
 		receivedAccept = r.Header.Get("Accept")
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode([]Zone{})
+		writeV2ZonesResponse(w, []Zone{})
 	}
 
 	_, client := setupTestServerWithVersion(t, handler, "v2")
@@ -393,5 +445,210 @@ func TestRequestContentType(t *testing.T) {
 	}
 	if receivedAccept != "application/json" {
 		t.Errorf("expected Accept=application/json, got %q", receivedAccept)
+	}
+}
+
+func TestFlexBool_UnmarshalJSON(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		want    FlexBool
+		wantErr bool
+	}{
+		{"bool true", "true", true, false},
+		{"bool false", "false", false, false},
+		{"int 1", "1", true, false},
+		{"int 0", "0", false, false},
+		{"invalid string", `"yes"`, false, true},
+		{"invalid number", "2", false, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var b FlexBool
+			err := b.UnmarshalJSON([]byte(tt.input))
+			if (err != nil) != tt.wantErr {
+				t.Errorf("UnmarshalJSON(%s) error = %v, wantErr %v", tt.input, err, tt.wantErr)
+				return
+			}
+			if !tt.wantErr && b != tt.want {
+				t.Errorf("UnmarshalJSON(%s) = %v, want %v", tt.input, b, tt.want)
+			}
+		})
+	}
+}
+
+func TestFlexBool_MarshalJSON(t *testing.T) {
+	tests := []struct {
+		name string
+		val  FlexBool
+		want string
+	}{
+		{"true", true, "true"},
+		{"false", false, "false"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			data, err := tt.val.MarshalJSON()
+			if err != nil {
+				t.Fatalf("MarshalJSON() error = %v", err)
+			}
+			if string(data) != tt.want {
+				t.Errorf("MarshalJSON() = %s, want %s", string(data), tt.want)
+			}
+		})
+	}
+}
+
+func TestFlexBool_RecordUnmarshal(t *testing.T) {
+	tests := []struct {
+		name string
+		json string
+		want FlexBool
+	}{
+		{"disabled as bool false", `{"id":1,"name":"test","type":"TXT","content":"val","ttl":120,"priority":0,"disabled":false}`, false},
+		{"disabled as bool true", `{"id":1,"name":"test","type":"TXT","content":"val","ttl":120,"priority":0,"disabled":true}`, true},
+		{"disabled as int 0", `{"id":1,"name":"test","type":"TXT","content":"val","ttl":120,"priority":0,"disabled":0}`, false},
+		{"disabled as int 1", `{"id":1,"name":"test","type":"TXT","content":"val","ttl":120,"priority":0,"disabled":1}`, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var r Record
+			if err := json.Unmarshal([]byte(tt.json), &r); err != nil {
+				t.Fatalf("Unmarshal() error = %v", err)
+			}
+			if r.Disabled != tt.want {
+				t.Errorf("Record.Disabled = %v, want %v", r.Disabled, tt.want)
+			}
+		})
+	}
+}
+
+func TestEnsureTXTQuoted(t *testing.T) {
+	tests := []struct {
+		name    string
+		content string
+		want    string
+	}{
+		{"unquoted", "test-value", `"test-value"`},
+		{"already quoted", `"test-value"`, `"test-value"`},
+		{"empty", "", `""`},
+		{"with spaces", "hello world", `"hello world"`},
+		{"already double-quoted", `""test""`, `"test"`},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := EnsureTXTQuoted(tt.content)
+			if got != tt.want {
+				t.Errorf("EnsureTXTQuoted(%q) = %q, want %q", tt.content, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestNormalizeTXTContent(t *testing.T) {
+	tests := []struct {
+		name    string
+		content string
+		want    string
+	}{
+		{"quoted", `"test-value"`, "test-value"},
+		{"unquoted", "test-value", "test-value"},
+		{"empty", "", ""},
+		{"empty quotes", `""`, ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := NormalizeTXTContent(tt.content)
+			if got != tt.want {
+				t.Errorf("NormalizeTXTContent(%q) = %q, want %q", tt.content, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestCreateTXTRecord_AutoQuotes(t *testing.T) {
+	var receivedContent string
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost && r.URL.Path == "/api/v2/zones/1/records" {
+			var body map[string]interface{}
+			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+				t.Errorf("failed to decode request body: %v", err)
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+			receivedContent = body["content"].(string)
+
+			writeV2CreateRecordResponse(w, Record{
+				ID: 30, Name: "_acme-challenge.example.com",
+				Type: "TXT", Content: receivedContent, TTL: 120,
+			})
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}
+
+	_, client := setupTestServerWithVersion(t, handler, "v2")
+	ctx := context.Background()
+
+	// Send unquoted content — should be auto-quoted
+	_, err := client.CreateTXTRecord(ctx, 1, "_acme-challenge.example.com", "unquoted-value", 120)
+	if err != nil {
+		t.Fatalf("CreateTXTRecord() error = %v", err)
+	}
+	if receivedContent != `"unquoted-value"` {
+		t.Errorf("expected quoted content %q, got %q", `"unquoted-value"`, receivedContent)
+	}
+
+	// Send already-quoted content — should not double-quote
+	_, err = client.CreateTXTRecord(ctx, 1, "_acme-challenge.example.com", `"already-quoted"`, 120)
+	if err != nil {
+		t.Fatalf("CreateTXTRecord() error = %v", err)
+	}
+	if receivedContent != `"already-quoted"` {
+		t.Errorf("expected quoted content %q, got %q", `"already-quoted"`, receivedContent)
+	}
+}
+
+func TestListTXTRecords_DisabledAsBool(t *testing.T) {
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		// Simulate API returning disabled as bool (as real PowerAdmin does)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"success":true,"data":[{"id":10,"name":"_acme.example.com","type":"TXT","content":"\"test\"","ttl":120,"priority":0,"disabled":false}],"message":"ok"}`))
+	}
+
+	_, client := setupTestServerWithVersion(t, handler, "v2")
+	records, err := client.ListTXTRecords(context.Background(), 1)
+	if err != nil {
+		t.Fatalf("ListTXTRecords() error = %v", err)
+	}
+	if len(records) != 1 {
+		t.Fatalf("expected 1 record, got %d", len(records))
+	}
+	if records[0].Disabled != false {
+		t.Errorf("expected Disabled=false, got %v", records[0].Disabled)
+	}
+}
+
+func TestListTXTRecords_DisabledAsInt(t *testing.T) {
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"success":true,"data":[{"id":10,"name":"_acme.example.com","type":"TXT","content":"\"test\"","ttl":120,"priority":0,"disabled":1}],"message":"ok"}`))
+	}
+
+	_, client := setupTestServerWithVersion(t, handler, "v2")
+	records, err := client.ListTXTRecords(context.Background(), 1)
+	if err != nil {
+		t.Fatalf("ListTXTRecords() error = %v", err)
+	}
+	if len(records) != 1 {
+		t.Fatalf("expected 1 record, got %d", len(records))
+	}
+	if records[0].Disabled != true {
+		t.Errorf("expected Disabled=true, got %v", records[0].Disabled)
 	}
 }

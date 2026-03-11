@@ -21,10 +21,28 @@ type DNSProvider interface {
 	DeleteRecord(ctx context.Context, zoneID int, recordID int) error
 }
 
+// apiResponse is the standard wrapper for all PowerAdmin API responses.
+type apiResponse struct {
+	Success bool            `json:"success"`
+	Data    json.RawMessage `json:"data"`
+	Message string          `json:"message"`
+}
+
+// v2ZonesData wraps the v2 zones response where data is {"zones": [...]}.
+type v2ZonesData struct {
+	Zones []Zone `json:"zones"`
+}
+
+// v2RecordData wraps the v2 create-record response where data is {"record": {...}}.
+type v2RecordData struct {
+	Record Record `json:"record"`
+}
+
 // client implements DNSProvider for any PowerAdmin API version.
 type client struct {
 	serverURL  string
 	apiKey     string
+	apiVersion string // "v1" or "v2"
 	pathPrefix string // "/api/v1" or "/api/v2"
 	httpClient *http.Client
 }
@@ -72,9 +90,24 @@ func (c *client) GetZones(ctx context.Context) ([]Zone, error) {
 		return nil, fmt.Errorf("PowerAdmin API returned HTTP %d: %s", status, string(body))
 	}
 
-	var zones []Zone
-	if err := json.Unmarshal(body, &zones); err != nil {
+	var resp apiResponse
+	if err := json.Unmarshal(body, &resp); err != nil {
 		return nil, fmt.Errorf("failed to parse zones response: %w", err)
+	}
+
+	var zones []Zone
+	if c.apiVersion == "v2" {
+		// V2: data is {"zones": [...]}
+		var wrapper v2ZonesData
+		if err := json.Unmarshal(resp.Data, &wrapper); err != nil {
+			return nil, fmt.Errorf("failed to parse v2 zones data: %w", err)
+		}
+		zones = wrapper.Zones
+	} else {
+		// V1: data is [...]
+		if err := json.Unmarshal(resp.Data, &zones); err != nil {
+			return nil, fmt.Errorf("failed to parse v1 zones data: %w", err)
+		}
 	}
 	return zones, nil
 }
@@ -102,15 +135,26 @@ func (c *client) ListTXTRecords(ctx context.Context, zoneID int) ([]Record, erro
 		return nil, fmt.Errorf("PowerAdmin API returned HTTP %d: %s", status, string(body))
 	}
 
-	var records []Record
-	if err := json.Unmarshal(body, &records); err != nil {
+	var resp apiResponse
+	if err := json.Unmarshal(body, &resp); err != nil {
 		return nil, fmt.Errorf("failed to parse records response: %w", err)
+	}
+
+	// Both v1 and v2: data is [...]
+	var records []Record
+	if err := json.Unmarshal(resp.Data, &records); err != nil {
+		return nil, fmt.Errorf("failed to parse records data: %w", err)
 	}
 	return records, nil
 }
 
 func (c *client) CreateTXTRecord(ctx context.Context, zoneID int, name, content string, ttl int) (*Record, error) {
 	path := fmt.Sprintf("/zones/%d/records", zoneID)
+
+	// Ensure TXT content is enclosed in quotes for the PowerAdmin API.
+	// Strip any existing quotes first to avoid double-quoting.
+	content = EnsureTXTQuoted(content)
+
 	reqBody := map[string]interface{}{
 		"name":     name,
 		"type":     "TXT",
@@ -128,9 +172,24 @@ func (c *client) CreateTXTRecord(ctx context.Context, zoneID int, name, content 
 		return nil, fmt.Errorf("PowerAdmin API returned HTTP %d: %s", status, string(body))
 	}
 
-	var record Record
-	if err := json.Unmarshal(body, &record); err != nil {
+	var resp apiResponse
+	if err := json.Unmarshal(body, &resp); err != nil {
 		return nil, fmt.Errorf("failed to parse record response: %w", err)
+	}
+
+	var record Record
+	if c.apiVersion == "v2" {
+		// V2: data is {"record": {...}}
+		var wrapper v2RecordData
+		if err := json.Unmarshal(resp.Data, &wrapper); err != nil {
+			return nil, fmt.Errorf("failed to parse v2 record data: %w", err)
+		}
+		record = wrapper.Record
+	} else {
+		// V1: data is flat record object (with record_id instead of id)
+		if err := json.Unmarshal(resp.Data, &record); err != nil {
+			return nil, fmt.Errorf("failed to parse v1 record data: %w", err)
+		}
 	}
 	return &record, nil
 }
@@ -145,6 +204,19 @@ func (c *client) DeleteRecord(ctx context.Context, zoneID int, recordID int) err
 		return fmt.Errorf("PowerAdmin API returned HTTP %d: %s", status, string(body))
 	}
 	return nil
+}
+
+// EnsureTXTQuoted ensures TXT record content is enclosed in double quotes.
+// Strips any existing surrounding quotes first to avoid double-quoting.
+func EnsureTXTQuoted(content string) string {
+	content = strings.Trim(content, "\"")
+	return fmt.Sprintf("\"%s\"", content)
+}
+
+// NormalizeTXTContent strips surrounding quotes from TXT content for comparison.
+// The API may return quoted or unquoted values depending on version.
+func NormalizeTXTContent(content string) string {
+	return strings.Trim(content, "\"")
 }
 
 // NewClient creates a DNSProvider for the given API version.
@@ -167,9 +239,15 @@ func NewClient(serverURL, apiKey, apiVersion string, insecure bool) (DNSProvider
 		}
 	}
 
+	version := apiVersion
+	if version == "" {
+		version = "v2"
+	}
+
 	return &client{
 		serverURL:  strings.TrimRight(serverURL, "/"),
 		apiKey:     apiKey,
+		apiVersion: version,
 		pathPrefix: pathPrefix,
 		httpClient: httpClient,
 	}, nil
