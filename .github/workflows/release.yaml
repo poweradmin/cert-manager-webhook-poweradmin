@@ -94,8 +94,15 @@ jobs:
       - name: Install cosign
         uses: sigstore/cosign-installer@v3
 
-      - name: Login to GitHub Container Registry
+      - name: Login to GitHub Container Registry (Helm)
         run: echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Login to GitHub Container Registry (cosign/Docker)
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Get chart version
         id: version
