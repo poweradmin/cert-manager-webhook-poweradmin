@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.2](https://github.com/poweradmin/cert-manager-webhook-poweradmin/compare/v0.1.1...v0.1.2) (2026-03-11)
+
+
+### Bug Fixes
+
+* **ci:** install cosign before goreleaser snapshot in security workflow ([c2cb54a](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/c2cb54ac2f851215035d75a19f8041628abbf6d1))
+* **ci:** install syft before goreleaser snapshot in security workflow ([560ce0e](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/560ce0eff0856270df478664b7a51edba132ddeb))
+
 ## [0.1.1](https://github.com/poweradmin/cert-manager-webhook-poweradmin/compare/v0.1.0...v0.1.1) (2026-03-11)
 
 
