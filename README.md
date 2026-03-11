@@ -9,6 +9,13 @@ A [cert-manager](https://cert-manager.io/) webhook for [PowerAdmin](https://www.
 - [Helm](https://helm.sh/) 3.0+
 - PowerAdmin instance with API access enabled
 
+## Container Images
+
+Multi-platform images (amd64/arm64) are published on each release:
+
+- `ghcr.io/poweradmin/cert-manager-webhook-poweradmin`
+- `docker.io/poweradmin/cert-manager-webhook-poweradmin`
+
 ## Installation
 
 ### Using Helm
