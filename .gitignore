@@ -16,3 +16,9 @@ Thumbs.db
 
 # Go
 vendor/
+
+# AI assistant instruction files
+AGENTS.md
+CLAUDE.md
+GEMINI.md
+.claude/
