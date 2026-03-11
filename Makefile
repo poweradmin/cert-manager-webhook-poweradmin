@@ -19,6 +19,14 @@ test: setup-envtest
 test-unit:
 	$(GO) test -v ./internal/...
 
+.PHONY: lint
+lint:
+	golangci-lint run ./...
+
+.PHONY: fmt
+fmt:
+	golangci-lint run --fix ./...
+
 .PHONY: build-local
 build-local:
 	CGO_ENABLED=0 $(GO) build -o webhook -ldflags '-w -extldflags "-static"' .
