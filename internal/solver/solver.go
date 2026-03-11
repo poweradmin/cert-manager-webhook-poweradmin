@@ -39,101 +39,104 @@ func (s *PowerAdminSolver) Initialize(kubeClientConfig *rest.Config, stopCh <-ch
 	return nil
 }
 
-func (s *PowerAdminSolver) Present(ch *v1alpha1.ChallengeRequest) error {
-	cfg, client, err := s.newClientFromChallenge(ch)
+// challengeContext holds resolved state shared by Present and CleanUp.
+type challengeContext struct {
+	cfg     poweradminDNSProviderConfig
+	client  poweradmin.DNSProvider
+	zone    *poweradmin.Zone
+	fqdn    string
+	txtKey  string
+	records []poweradmin.Record
+}
+
+// resolveChallenge performs the common setup for Present and CleanUp:
+// decode config, create API client, find zone, resolve FQDN, list TXT records.
+func (s *PowerAdminSolver) resolveChallenge(ch *v1alpha1.ChallengeRequest) (*challengeContext, error) {
+	cfg, err := loadConfig(ch.Config)
 	if err != nil {
-		return err
+		return nil, err
+	}
+
+	if cfg.ServerURL == "" {
+		return nil, fmt.Errorf("serverURL must be specified in solver config")
+	}
+
+	apiKey, err := s.getAPIKey(cfg, ch.ResourceNamespace)
+	if err != nil {
+		return nil, err
+	}
+
+	client, err := poweradmin.NewClient(cfg.ServerURL, apiKey, cfg.APIVersion, cfg.Insecure)
+	if err != nil {
+		return nil, err
 	}
 
 	ctx := context.Background()
 
 	zone, err := s.findZone(ctx, client, ch)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	fqdn := strings.TrimSuffix(ch.ResolvedFQDN, ".")
-	quotedKey := fmt.Sprintf("%q", ch.Key)
+	txtKey := fmt.Sprintf("%q", ch.Key)
 
-	// Check idempotency: if a matching record already exists, skip creation.
 	records, err := client.ListTXTRecords(ctx, zone.ID)
 	if err != nil {
-		return fmt.Errorf("failed to list TXT records for zone %q: %w", zone.Name, err)
+		return nil, fmt.Errorf("failed to list TXT records for zone %q: %w", zone.Name, err)
 	}
-	for _, r := range records {
-		if r.Name == fqdn && r.Content == quotedKey {
+
+	return &challengeContext{
+		cfg:     cfg,
+		client:  client,
+		zone:    zone,
+		fqdn:    fqdn,
+		txtKey:  txtKey,
+		records: records,
+	}, nil
+}
+
+func (s *PowerAdminSolver) Present(ch *v1alpha1.ChallengeRequest) error {
+	cc, err := s.resolveChallenge(ch)
+	if err != nil {
+		return err
+	}
+
+	// Check idempotency: if a matching record already exists, skip creation.
+	for _, r := range cc.records {
+		if r.Name == cc.fqdn && r.Content == cc.txtKey {
 			return nil
 		}
 	}
 
-	ttl := cfg.TTL
+	ttl := cc.cfg.TTL
 	if ttl <= 0 {
 		ttl = defaultTTL
 	}
 
-	_, err = client.CreateTXTRecord(ctx, zone.ID, fqdn, quotedKey, ttl)
+	_, err = cc.client.CreateTXTRecord(context.Background(), cc.zone.ID, cc.fqdn, cc.txtKey, ttl)
 	if err != nil {
-		return fmt.Errorf("failed to create TXT record for %q in zone %q: %w", fqdn, zone.Name, err)
+		return fmt.Errorf("failed to create TXT record for %q in zone %q: %w", cc.fqdn, cc.zone.Name, err)
 	}
 
 	return nil
 }
 
 func (s *PowerAdminSolver) CleanUp(ch *v1alpha1.ChallengeRequest) error {
-	_, client, err := s.newClientFromChallenge(ch)
+	cc, err := s.resolveChallenge(ch)
 	if err != nil {
 		return err
 	}
 
-	ctx := context.Background()
-
-	zone, err := s.findZone(ctx, client, ch)
-	if err != nil {
-		return err
-	}
-
-	fqdn := strings.TrimSuffix(ch.ResolvedFQDN, ".")
-	quotedKey := fmt.Sprintf("%q", ch.Key)
-
-	records, err := client.ListTXTRecords(ctx, zone.ID)
-	if err != nil {
-		return fmt.Errorf("failed to list TXT records for zone %q: %w", zone.Name, err)
-	}
-
-	for _, r := range records {
-		if r.Name == fqdn && r.Content == quotedKey {
-			if err := client.DeleteRecord(ctx, zone.ID, r.ID); err != nil {
-				return fmt.Errorf("failed to delete TXT record %d for %q in zone %q: %w", r.ID, fqdn, zone.Name, err)
+	for _, r := range cc.records {
+		if r.Name == cc.fqdn && r.Content == cc.txtKey {
+			if err := cc.client.DeleteRecord(context.Background(), cc.zone.ID, r.ID); err != nil {
+				return fmt.Errorf("failed to delete TXT record %d for %q in zone %q: %w", r.ID, cc.fqdn, cc.zone.Name, err)
 			}
 		}
 	}
 
 	return nil
-}
-
-// newClientFromChallenge decodes config, fetches the API key from K8s Secret,
-// and creates a PowerAdmin API client.
-func (s *PowerAdminSolver) newClientFromChallenge(ch *v1alpha1.ChallengeRequest) (poweradminDNSProviderConfig, poweradmin.DNSProvider, error) {
-	cfg, err := loadConfig(ch.Config)
-	if err != nil {
-		return cfg, nil, err
-	}
-
-	if cfg.ServerURL == "" {
-		return cfg, nil, fmt.Errorf("serverURL must be specified in solver config")
-	}
-
-	apiKey, err := s.getAPIKey(cfg, ch.ResourceNamespace)
-	if err != nil {
-		return cfg, nil, err
-	}
-
-	client, err := poweradmin.NewClient(cfg.ServerURL, apiKey, cfg.APIVersion, cfg.Insecure)
-	if err != nil {
-		return cfg, nil, err
-	}
-
-	return cfg, client, nil
 }
 
 // getAPIKey fetches the API key from the Kubernetes Secret referenced in the config.
