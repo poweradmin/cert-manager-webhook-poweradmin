@@ -32,8 +32,7 @@ build:
 rendered-manifest.yaml: $(OUT)/rendered-manifest.yaml
 
 $(OUT)/rendered-manifest.yaml: $(HELM_FILES) | $(OUT)
-	helm template \
-	    --name poweradmin-webhook \
+	helm template poweradmin-webhook \
             --set image.repository=$(IMAGE_NAME) \
             --set image.tag=$(IMAGE_TAG) \
             deploy/poweradmin-webhook > $@
