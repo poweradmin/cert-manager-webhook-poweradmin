@@ -1,5 +1,7 @@
 groupName: acme.yourdomain.com
 
+replicaCount: 1
+
 certManager:
   namespace: cert-manager
   serviceAccountName: cert-manager
@@ -15,6 +17,40 @@ fullnameOverride: ""
 service:
   type: ClusterIP
   port: 443
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+livenessProbe:
+  httpGet:
+    scheme: HTTPS
+    path: /healthz
+    port: https
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    scheme: HTTPS
+    path: /healthz
+    port: https
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
 
 resources: {}
 

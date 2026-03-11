@@ -21,10 +21,18 @@ spec:
         release: {{ .Release.Name }}
     spec:
       serviceAccountName: {{ include "poweradmin-webhook.fullname" . }}
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+{{ toYaml . | indent 8 }}
+      {{- end }}
       containers:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- with .Values.securityContext }}
+          securityContext:
+{{ toYaml . | indent 12 }}
+          {{- end }}
           args:
             - --tls-cert-file=/tls/tls.crt
             - --tls-private-key-file=/tls/tls.key
@@ -37,15 +45,9 @@ spec:
               containerPort: 10250
               protocol: TCP
           livenessProbe:
-            httpGet:
-              scheme: HTTPS
-              path: /healthz
-              port: https
+{{ toYaml .Values.livenessProbe | indent 12 }}
           readinessProbe:
-            httpGet:
-              scheme: HTTPS
-              path: /healthz
-              port: https
+{{ toYaml .Values.readinessProbe | indent 12 }}
           volumeMounts:
             - name: certs
               mountPath: /tls
