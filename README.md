@@ -117,6 +117,14 @@ make test-unit
 make test
 ```
 
+## Sponsors
+
+<a href="https://menzel-it.net/de/">
+  <img src=".github/menzel_it_logo.svg" alt="Menzel IT GmbH" height="60">
+</a>
+
+We thank [Menzel IT GmbH](https://menzel-it.net/de/) for their support of this project.
+
 ## License
 
 Apache License 2.0 - see [LICENSE](LICENSE) file.
