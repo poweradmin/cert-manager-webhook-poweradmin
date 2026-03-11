@@ -1,0 +1,109 @@
+---
+name: Security
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  schedule:
+    - cron: "0 6 * * 1"
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  trivy-fs:
+    name: Filesystem Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Run Trivy filesystem scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: sarif
+          output: trivy-fs.sarif
+          severity: CRITICAL,HIGH
+
+      - name: Upload Trivy SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-fs.sarif
+          category: trivy-filesystem
+
+  trivy-image:
+    name: Image Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - name: Setup QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build snapshot image
+        uses: goreleaser/goreleaser-action@v7
+        with:
+          version: latest
+          args: release --snapshot --clean
+        env:
+          CI_COMMIT_TIMESTAMP: ${{ github.event.repository.updated_at }}
+          CI_COMMIT_SHA: ${{ github.sha }}
+
+      - name: Run Trivy image scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: image
+          image-ref: "ghcr.io/poweradmin/cert-manager-webhook-poweradmin:latest-amd64"
+          format: sarif
+          output: trivy-image.sarif
+          severity: CRITICAL,HIGH
+
+      - name: Upload Trivy SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-image.sarif
+          category: trivy-image
+
+  sbom:
+    name: SBOM
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Generate SBOM
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: spdx-json
+          output: sbom.spdx.json
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-spdx
+          path: sbom.spdx.json
