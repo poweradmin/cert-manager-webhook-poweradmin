@@ -6,6 +6,7 @@
 #   - PowerAdmin running locally (e.g., via devcontainer)
 #   - A test zone must exist in PowerAdmin
 #   - A valid API key
+#   - jq installed
 #
 # Usage:
 #   ./scripts/integration-test.sh [POWERADMIN_URL] [API_KEY] [ZONE_NAME]
@@ -37,6 +38,12 @@ FAIL=0
 pass() { PASS=$((PASS + 1)); echo "  PASS: $1"; }
 fail() { FAIL=$((FAIL + 1)); echo "  FAIL: $1"; }
 
+# Check for jq
+if ! command -v jq >/dev/null 2>&1; then
+  echo "ERROR: jq is required but not found. Install with: brew install jq"
+  exit 1
+fi
+
 echo "=== cert-manager-webhook-poweradmin integration test ==="
 echo "PowerAdmin URL: ${POWERADMIN_URL}"
 echo "API Version:    ${API_VERSION}"
@@ -63,12 +70,12 @@ if [ "$API_VERSION" = "v2" ]; then
   ZONE_ID=$(curl -s \
     -H "X-API-Key: ${API_KEY}" \
     "${POWERADMIN_URL}/api/${API_VERSION}/zones" | \
-    python3 -c "import sys,json; resp=json.load(sys.stdin); zones=resp['data']['zones']; print(next((z['id'] for z in zones if z['name']=='${ZONE_NAME}'), ''))")
+    jq -r --arg name "$ZONE_NAME" '.data.zones[] | select(.name == $name) | .id // empty')
 else
   ZONE_ID=$(curl -s \
     -H "X-API-Key: ${API_KEY}" \
     "${POWERADMIN_URL}/api/${API_VERSION}/zones" | \
-    python3 -c "import sys,json; resp=json.load(sys.stdin); zones=resp['data']; print(next((z['id'] for z in zones if z['name']=='${ZONE_NAME}'), ''))")
+    jq -r --arg name "$ZONE_NAME" '.data[] | select(.name == $name) | .id // empty')
 fi
 
 if [ -n "$ZONE_ID" ]; then
@@ -97,19 +104,11 @@ fi
 
 # 4. Verify record exists
 echo "--- Verify TXT record exists ---"
-RECORDS=$(curl -s \
+RECORD_ID=$(curl -s \
   -H "X-API-Key: ${API_KEY}" \
-  "${POWERADMIN_URL}/api/${API_VERSION}/zones/${ZONE_ID}/records?type=TXT")
-
-RECORD_ID=$(echo "$RECORDS" | python3 -c "
-import sys, json
-resp = json.load(sys.stdin)
-records = resp['data']
-for r in records:
-    if r['name'] == '${RECORD_NAME}' and r['content'].strip('\"') == '${RECORD_VALUE}':
-        print(r['id'])
-        break
-" 2>/dev/null || echo "")
+  "${POWERADMIN_URL}/api/${API_VERSION}/zones/${ZONE_ID}/records?type=TXT" | \
+  jq -r --arg name "$RECORD_NAME" --arg value "$RECORD_VALUE" \
+    '.data[] | select(.name == $name and (.content | gsub("^\"|\"$"; "") == $value)) | .id // empty' | head -1)
 
 if [ -n "$RECORD_ID" ]; then
   pass "TXT record verified (ID ${RECORD_ID})"
@@ -137,14 +136,8 @@ echo "--- Delete TXT records (CleanUp) ---"
 ALL_RECORD_IDS=$(curl -s \
   -H "X-API-Key: ${API_KEY}" \
   "${POWERADMIN_URL}/api/${API_VERSION}/zones/${ZONE_ID}/records?type=TXT" | \
-  python3 -c "
-import sys, json
-resp = json.load(sys.stdin)
-records = resp['data']
-for r in records:
-    if r['name'] == '${RECORD_NAME}' and r['content'].strip('\"') == '${RECORD_VALUE}':
-        print(r['id'])
-" 2>/dev/null || echo "")
+  jq -r --arg name "$RECORD_NAME" --arg value "$RECORD_VALUE" \
+    '.data[] | select(.name == $name and (.content | gsub("^\"|\"$"; "") == $value)) | .id')
 
 DELETE_OK=true
 for rid in $ALL_RECORD_IDS; do
@@ -171,13 +164,8 @@ echo "--- Verify TXT record deleted ---"
 REMAINING=$(curl -s \
   -H "X-API-Key: ${API_KEY}" \
   "${POWERADMIN_URL}/api/${API_VERSION}/zones/${ZONE_ID}/records?type=TXT" | \
-  python3 -c "
-import sys, json
-resp = json.load(sys.stdin)
-records = resp['data']
-matches = [r for r in records if r['name'] == '${RECORD_NAME}' and r['content'].strip('\"') == '${RECORD_VALUE}']
-print(len(matches))
-" 2>/dev/null || echo "unknown")
+  jq --arg name "$RECORD_NAME" --arg value "$RECORD_VALUE" \
+    '[.data[] | select(.name == $name and (.content | gsub("^\"|\"$"; "") == $value))] | length')
 
 if [ "$REMAINING" = "0" ]; then
   pass "TXT record confirmed deleted"
