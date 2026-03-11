@@ -1,0 +1,34 @@
+.github/
+.idea/
+.vscode/
+.DS_Store
+.env
+.goreleaser.yml
+.golangci.yaml
+.yamllint.yaml
+.release-please-manifest.json
+release-please-config.json
+
+# Build artifacts
+/cert-manager-webhook-poweradmin
+/webhook
+_out/
+bin/
+coverage.*
+*.out
+*.coverprofile
+
+# Documentation & config
+CHANGELOG.md
+CLAUDE.md
+AGENTS.md
+GEMINI.md
+README.md
+LICENSE
+Makefile
+Dockerfile
+Dockerfile.goreleaser
+
+# Deployment
+deploy/
+scripts/
