@@ -1,5 +1,9 @@
 # cert-manager-webhook-poweradmin
 
+[![CI](https://github.com/poweradmin/cert-manager-webhook-poweradmin/actions/workflows/test.yaml/badge.svg)](https://github.com/poweradmin/cert-manager-webhook-poweradmin/actions/workflows/test.yaml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/cert-manager/cert-manager-webhook-poweradmin)](https://goreportcard.com/report/github.com/cert-manager/cert-manager-webhook-poweradmin)
+[![GitHub release](https://img.shields.io/github/v/release/poweradmin/cert-manager-webhook-poweradmin)](https://github.com/poweradmin/cert-manager-webhook-poweradmin/releases)
+
 A [cert-manager](https://cert-manager.io/) webhook for [PowerAdmin](https://www.poweradmin.org/) DNS provider, enabling DNS-01 ACME challenges for automated certificate issuance (e.g., Let's Encrypt) in Kubernetes.
 
 ## Prerequisites
