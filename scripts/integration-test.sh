@@ -106,7 +106,7 @@ import sys, json
 resp = json.load(sys.stdin)
 records = resp['data']
 for r in records:
-    if r['name'] == '${RECORD_NAME}' and r['content'] == ${RECORD_CONTENT}:
+    if r['name'] == '${RECORD_NAME}' and r['content'].strip('\"') == '${RECORD_VALUE}':
         print(r['id'])
         break
 " 2>/dev/null || echo "")
@@ -142,7 +142,7 @@ import sys, json
 resp = json.load(sys.stdin)
 records = resp['data']
 for r in records:
-    if r['name'] == '${RECORD_NAME}' and r['content'] == ${RECORD_CONTENT}:
+    if r['name'] == '${RECORD_NAME}' and r['content'].strip('\"') == '${RECORD_VALUE}':
         print(r['id'])
 " 2>/dev/null || echo "")
 
@@ -175,7 +175,7 @@ REMAINING=$(curl -s \
 import sys, json
 resp = json.load(sys.stdin)
 records = resp['data']
-matches = [r for r in records if r['name'] == '${RECORD_NAME}' and r['content'] == ${RECORD_CONTENT}]
+matches = [r for r in records if r['name'] == '${RECORD_NAME}' and r['content'].strip('\"') == '${RECORD_VALUE}']
 print(len(matches))
 " 2>/dev/null || echo "unknown")
 
