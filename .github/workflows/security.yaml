@@ -25,7 +25,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Run Trivy filesystem scan
-        uses: aquasecurity/trivy-action@v0.35.0
+        uses: aquasecurity/trivy-action@0.35.0
         with:
           scan-type: fs
           scan-ref: .
@@ -71,7 +71,7 @@ jobs:
           CI_COMMIT_SHA: ${{ github.sha }}
 
       - name: Run Trivy image scan
-        uses: aquasecurity/trivy-action@v0.35.0
+        uses: aquasecurity/trivy-action@0.35.0
         with:
           scan-type: image
           image-ref: "ghcr.io/poweradmin/cert-manager-webhook-poweradmin:latest-amd64"
@@ -95,7 +95,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Generate SBOM
-        uses: aquasecurity/trivy-action@v0.35.0
+        uses: aquasecurity/trivy-action@0.35.0
         with:
           scan-type: fs
           scan-ref: .
