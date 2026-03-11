@@ -23,7 +23,13 @@ ZONE_NAME="${3:-admin-zone.example.com}"
 API_VERSION="${API_VERSION:-v2}"
 
 RECORD_NAME="_acme-test.${ZONE_NAME}"
-RECORD_CONTENT="\"integration-test-$(date +%s)\""
+RECORD_VALUE="integration-test-$(date +%s)"
+# V1 API requires TXT content to be enclosed in quotes; V2 accepts bare values
+if [ "$API_VERSION" = "v1" ]; then
+  RECORD_CONTENT="\"\\\"${RECORD_VALUE}\\\"\""
+else
+  RECORD_CONTENT="\"${RECORD_VALUE}\""
+fi
 
 PASS=0
 FAIL=0
@@ -53,10 +59,17 @@ fi
 
 # 2. Find zone ID
 echo "--- Find zone ---"
-ZONE_ID=$(curl -s \
-  -H "X-API-Key: ${API_KEY}" \
-  "${POWERADMIN_URL}/api/${API_VERSION}/zones" | \
-  python3 -c "import sys,json; zones=json.load(sys.stdin); print(next((z['id'] for z in zones if z['name']=='${ZONE_NAME}'), ''))")
+if [ "$API_VERSION" = "v2" ]; then
+  ZONE_ID=$(curl -s \
+    -H "X-API-Key: ${API_KEY}" \
+    "${POWERADMIN_URL}/api/${API_VERSION}/zones" | \
+    python3 -c "import sys,json; resp=json.load(sys.stdin); zones=resp['data']['zones']; print(next((z['id'] for z in zones if z['name']=='${ZONE_NAME}'), ''))")
+else
+  ZONE_ID=$(curl -s \
+    -H "X-API-Key: ${API_KEY}" \
+    "${POWERADMIN_URL}/api/${API_VERSION}/zones" | \
+    python3 -c "import sys,json; resp=json.load(sys.stdin); zones=resp['data']; print(next((z['id'] for z in zones if z['name']=='${ZONE_NAME}'), ''))")
+fi
 
 if [ -n "$ZONE_ID" ]; then
   pass "Found zone '${ZONE_NAME}' with ID ${ZONE_ID}"
@@ -90,7 +103,8 @@ RECORDS=$(curl -s \
 
 RECORD_ID=$(echo "$RECORDS" | python3 -c "
 import sys, json
-records = json.load(sys.stdin)
+resp = json.load(sys.stdin)
+records = resp['data']
 for r in records:
     if r['name'] == '${RECORD_NAME}' and r['content'] == ${RECORD_CONTENT}:
         print(r['id'])
@@ -118,21 +132,38 @@ else
   fail "Unexpected response for duplicate create (HTTP ${IDEM_CODE})"
 fi
 
-# 6. Delete TXT record (simulates CleanUp)
-echo "--- Delete TXT record (CleanUp) ---"
-if [ -n "$RECORD_ID" ]; then
+# 6. Delete all matching TXT records (simulates CleanUp — deletes all matches like the solver does)
+echo "--- Delete TXT records (CleanUp) ---"
+ALL_RECORD_IDS=$(curl -s \
+  -H "X-API-Key: ${API_KEY}" \
+  "${POWERADMIN_URL}/api/${API_VERSION}/zones/${ZONE_ID}/records?type=TXT" | \
+  python3 -c "
+import sys, json
+resp = json.load(sys.stdin)
+records = resp['data']
+for r in records:
+    if r['name'] == '${RECORD_NAME}' and r['content'] == ${RECORD_CONTENT}:
+        print(r['id'])
+" 2>/dev/null || echo "")
+
+DELETE_OK=true
+for rid in $ALL_RECORD_IDS; do
   DELETE_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
     -X DELETE \
     -H "X-API-Key: ${API_KEY}" \
-    "${POWERADMIN_URL}/api/${API_VERSION}/zones/${ZONE_ID}/records/${RECORD_ID}")
+    "${POWERADMIN_URL}/api/${API_VERSION}/zones/${ZONE_ID}/records/${rid}")
 
-  if [ "$DELETE_CODE" = "204" ] || [ "$DELETE_CODE" = "200" ]; then
-    pass "Deleted TXT record (HTTP ${DELETE_CODE})"
-  else
-    fail "Failed to delete TXT record (HTTP ${DELETE_CODE})"
+  if [ "$DELETE_CODE" != "204" ] && [ "$DELETE_CODE" != "200" ]; then
+    DELETE_OK=false
   fi
+done
+
+if [ -z "$ALL_RECORD_IDS" ]; then
+  fail "No records found to delete"
+elif [ "$DELETE_OK" = true ]; then
+  pass "Deleted all matching TXT records"
 else
-  fail "No record ID to delete"
+  fail "Failed to delete some TXT records"
 fi
 
 # 7. Verify record is gone
@@ -142,7 +173,8 @@ REMAINING=$(curl -s \
   "${POWERADMIN_URL}/api/${API_VERSION}/zones/${ZONE_ID}/records?type=TXT" | \
   python3 -c "
 import sys, json
-records = json.load(sys.stdin)
+resp = json.load(sys.stdin)
+records = resp['data']
 matches = [r for r in records if r['name'] == '${RECORD_NAME}' and r['content'] == ${RECORD_CONTENT}]
 print(len(matches))
 " 2>/dev/null || echo "unknown")
@@ -152,24 +184,6 @@ if [ "$REMAINING" = "0" ]; then
 else
   fail "TXT record still exists after deletion (count: ${REMAINING})"
 fi
-
-# Clean up any duplicate records from idempotency test
-CLEANUP_IDS=$(curl -s \
-  -H "X-API-Key: ${API_KEY}" \
-  "${POWERADMIN_URL}/api/${API_VERSION}/zones/${ZONE_ID}/records?type=TXT" | \
-  python3 -c "
-import sys, json
-records = json.load(sys.stdin)
-for r in records:
-    if r['name'] == '${RECORD_NAME}':
-        print(r['id'])
-" 2>/dev/null || echo "")
-
-for cid in $CLEANUP_IDS; do
-  curl -s -o /dev/null -X DELETE \
-    -H "X-API-Key: ${API_KEY}" \
-    "${POWERADMIN_URL}/api/${API_VERSION}/zones/${ZONE_ID}/records/${cid}"
-done
 
 # 8. Test with v1 API (if testing v2)
 if [ "$API_VERSION" = "v2" ]; then
