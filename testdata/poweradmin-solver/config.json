@@ -1,0 +1,9 @@
+{
+  "serverURL": "http://localhost:8081",
+  "apiKeySecretRef": {
+    "name": "poweradmin-api-key",
+    "key": "api-key"
+  },
+  "apiVersion": "v2",
+  "ttl": 120
+}
