@@ -157,10 +157,21 @@ func (s *PowerAdminSolver) getAPIKey(cfg poweradminDNSProviderConfig, namespace 
 
 // findZone resolves the DNS zone in PowerAdmin for the given challenge.
 func (s *PowerAdminSolver) findZone(ctx context.Context, client poweradmin.DNSProvider, ch *v1alpha1.ChallengeRequest) (*poweradmin.Zone, error) {
+	// Fetch all zones once and search locally to avoid redundant API calls
+	// and to properly surface API errors (auth failures, network issues).
+	zones, err := client.GetZones(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list zones from PowerAdmin: %w", err)
+	}
+
+	zoneMap := make(map[string]*poweradmin.Zone, len(zones))
+	for i := range zones {
+		zoneMap[zones[i].Name] = &zones[i]
+	}
+
 	// Try ch.ResolvedZone first (provided by cert-manager).
 	zoneName := strings.TrimSuffix(ch.ResolvedZone, ".")
-	zone, err := client.GetZoneByName(ctx, zoneName)
-	if err == nil {
+	if zone, ok := zoneMap[zoneName]; ok {
 		return zone, nil
 	}
 
@@ -169,8 +180,7 @@ func (s *PowerAdminSolver) findZone(ctx context.Context, client poweradmin.DNSPr
 	parts := strings.Split(fqdn, ".")
 	for i := 1; i < len(parts); i++ {
 		candidate := strings.Join(parts[i:], ".")
-		zone, err := client.GetZoneByName(ctx, candidate)
-		if err == nil {
+		if zone, ok := zoneMap[candidate]; ok {
 			return zone, nil
 		}
 	}
