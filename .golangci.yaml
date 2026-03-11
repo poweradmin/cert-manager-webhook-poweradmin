@@ -2,6 +2,19 @@
 version: "2"
 
 linters:
+  enable:
+    - bodyclose
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - gosec
+    - goconst
+    - misspell
+    - unconvert
+    - unparam
+    - noctx
   exclusions:
     generated: lax
     presets:
@@ -13,6 +26,11 @@ linters:
       - third_party$
       - builtin$
       - examples$
+    rules:
+      - path: _test\.go
+        linters:
+          - gosec
+          - unparam
 
 formatters:
   enable:
