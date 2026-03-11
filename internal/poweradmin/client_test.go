@@ -8,6 +8,8 @@ import (
 	"testing"
 )
 
+const testV2RecordsPath = "/api/v2/zones/1/records"
+
 func setupTestServerWithVersion(t *testing.T, handler http.HandlerFunc, apiVersion string) (*httptest.Server, DNSProvider) {
 	t.Helper()
 	server := httptest.NewServer(handler)
@@ -193,7 +195,7 @@ func TestListTXTRecords(t *testing.T) {
 	}
 
 	handler := func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/api/v2/zones/1/records" && r.URL.Query().Get("type") == "TXT" {
+		if r.URL.Path == testV2RecordsPath && r.URL.Query().Get("type") == "TXT" {
 			writeRecordsResponse(w, records)
 			return
 		}
@@ -214,7 +216,7 @@ func TestListTXTRecords(t *testing.T) {
 
 func TestCreateTXTRecord(t *testing.T) {
 	handler := func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodPost && r.URL.Path == "/api/v2/zones/1/records" {
+		if r.Method == http.MethodPost && r.URL.Path == testV2RecordsPath {
 			var body map[string]interface{}
 			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 				t.Errorf("failed to decode request body: %v", err)
@@ -587,7 +589,7 @@ func TestNormalizeTXTContent(t *testing.T) {
 func TestCreateTXTRecord_AutoQuotes(t *testing.T) {
 	var receivedContent string
 	handler := func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodPost && r.URL.Path == "/api/v2/zones/1/records" {
+		if r.Method == http.MethodPost && r.URL.Path == testV2RecordsPath {
 			var body map[string]interface{}
 			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 				t.Errorf("failed to decode request body: %v", err)

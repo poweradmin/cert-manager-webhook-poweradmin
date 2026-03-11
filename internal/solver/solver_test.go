@@ -2,7 +2,6 @@ package solver
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"testing"
 
@@ -16,6 +15,8 @@ import (
 
 	"github.com/cert-manager/cert-manager-webhook-poweradmin/internal/poweradmin"
 )
+
+const testACMEFQDN = "_acme-challenge.example.com"
 
 // Compile-time check: PowerAdminSolver must implement webhook.Solver.
 var _ webhook.Solver = &PowerAdminSolver{}
@@ -115,28 +116,9 @@ func (m *mockDNSProvider) addRecord(zoneID int, record poweradmin.Record) {
 
 // --- Test Helpers ---
 
-func makeConfig(t *testing.T, cfg poweradminDNSProviderConfig) *extapi.JSON {
-	t.Helper()
-	data, err := json.Marshal(cfg)
-	if err != nil {
-		t.Fatalf("failed to marshal config: %v", err)
-	}
-	return &extapi.JSON{Raw: data}
-}
-
-func makeChallengeRequest(zone, fqdn, key string, cfg *extapi.JSON) *v1alpha1.ChallengeRequest {
-	return &v1alpha1.ChallengeRequest{
-		ResourceNamespace: "default",
-		ResolvedZone:      zone,
-		ResolvedFQDN:      fqdn,
-		Key:               key,
-		Config:            cfg,
-	}
-}
-
 func newSolverWithMock(mock *mockDNSProvider) *PowerAdminSolver {
 	s := New()
-	s.kubeClient = fakeclient.NewSimpleClientset(
+	s.kubeClient = fakeclient.NewClientset(
 		&corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "poweradmin-api-key",
@@ -174,12 +156,12 @@ func TestInterfaceCompliance(t *testing.T) {
 
 func TestLoadConfig(t *testing.T) {
 	tests := []struct {
-		name      string
-		json      string
-		wantURL   string
-		wantVer   string
-		wantTTL   int
-		wantErr   bool
+		name    string
+		json    string
+		wantURL string
+		wantVer string
+		wantTTL int
+		wantErr bool
 	}{
 		{
 			name:    "full config",
@@ -245,7 +227,7 @@ func TestLoadConfig_Insecure(t *testing.T) {
 
 func TestGetAPIKey(t *testing.T) {
 	s := New()
-	s.kubeClient = fakeclient.NewSimpleClientset(
+	s.kubeClient = fakeclient.NewClientset(
 		&corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "my-secret",
@@ -275,7 +257,7 @@ func TestGetAPIKey(t *testing.T) {
 
 func TestGetAPIKey_SecretNotFound(t *testing.T) {
 	s := New()
-	s.kubeClient = fakeclient.NewSimpleClientset()
+	s.kubeClient = fakeclient.NewClientset()
 
 	cfg := poweradminDNSProviderConfig{
 		APIKeySecretRef: cmmeta.SecretKeySelector{
@@ -292,7 +274,7 @@ func TestGetAPIKey_SecretNotFound(t *testing.T) {
 
 func TestGetAPIKey_KeyNotFound(t *testing.T) {
 	s := New()
-	s.kubeClient = fakeclient.NewSimpleClientset(
+	s.kubeClient = fakeclient.NewClientset(
 		&corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "my-secret",
@@ -389,7 +371,7 @@ func TestPresent_CreatesRecord(t *testing.T) {
 
 	// Override resolveChallenge by testing the logic components directly.
 	// Present creates a TXT record when none exists.
-	fqdn := "_acme-challenge.example.com"
+	fqdn := testACMEFQDN
 	key := fmt.Sprintf("%q", "test-token")
 
 	// No existing records — should create.
@@ -411,7 +393,7 @@ func TestPresent_CreatesRecord(t *testing.T) {
 
 func TestPresent_Idempotent(t *testing.T) {
 	mock := newMockDNSProvider([]poweradmin.Zone{{ID: 1, Name: "example.com"}})
-	fqdn := "_acme-challenge.example.com"
+	fqdn := testACMEFQDN
 	key := fmt.Sprintf("%q", "test-token")
 
 	// Add existing record with quoted content (as the API would return).
@@ -436,7 +418,7 @@ func TestPresent_Idempotent(t *testing.T) {
 
 func TestPresent_IdempotentWithUnquotedContent(t *testing.T) {
 	mock := newMockDNSProvider([]poweradmin.Zone{{ID: 1, Name: "example.com"}})
-	fqdn := "_acme-challenge.example.com"
+	fqdn := testACMEFQDN
 	key := fmt.Sprintf("%q", "test-token") // produces `"test-token"`
 
 	// API returns content without quotes.
@@ -460,7 +442,7 @@ func TestPresent_IdempotentWithUnquotedContent(t *testing.T) {
 
 func TestCleanUp_DeletesOnlyMatchingRecord(t *testing.T) {
 	mock := newMockDNSProvider([]poweradmin.Zone{{ID: 1, Name: "example.com"}})
-	fqdn := "_acme-challenge.example.com"
+	fqdn := testACMEFQDN
 	key := fmt.Sprintf("%q", "token-A")
 
 	// Two TXT records for the same FQDN (concurrent validations).
@@ -501,7 +483,7 @@ func TestCleanUp_DeletesOnlyMatchingRecord(t *testing.T) {
 
 func TestCleanUp_NoMatchingRecord(t *testing.T) {
 	mock := newMockDNSProvider([]poweradmin.Zone{{ID: 1, Name: "example.com"}})
-	fqdn := "_acme-challenge.example.com"
+	fqdn := testACMEFQDN
 	key := fmt.Sprintf("%q", "nonexistent-token")
 
 	mock.addRecord(1, poweradmin.Record{
@@ -524,7 +506,7 @@ func TestCleanUp_NoMatchingRecord(t *testing.T) {
 
 func TestCleanUp_HandlesUnquotedAPIResponse(t *testing.T) {
 	mock := newMockDNSProvider([]poweradmin.Zone{{ID: 1, Name: "example.com"}})
-	fqdn := "_acme-challenge.example.com"
+	fqdn := testACMEFQDN
 	key := fmt.Sprintf("%q", "my-token") // `"my-token"`
 
 	// API returns unquoted content.
