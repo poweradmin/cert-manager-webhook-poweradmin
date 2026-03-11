@@ -1,3 +1,5 @@
+//go:build integration
+
 package main
 
 import (
@@ -14,9 +16,6 @@ var (
 )
 
 func TestRunsSuite(t *testing.T) {
-	// Uncomment and configure for integration testing against a real PowerAdmin instance.
-	// Requires TEST_ZONE_NAME environment variable to be set.
-
 	if zone == "" {
 		t.Skip("TEST_ZONE_NAME not set, skipping conformance tests")
 	}
