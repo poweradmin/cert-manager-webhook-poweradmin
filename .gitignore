@@ -16,6 +16,8 @@ Thumbs.db
 
 # Go
 vendor/
+.gocache*/
+.gopath*/
 
 # AI assistant instruction files
 AGENTS.md
