@@ -19,10 +19,14 @@ test: setup-envtest
 test-unit:
 	$(GO) test -v ./internal/...
 
+.PHONY: build-local
+build-local:
+	CGO_ENABLED=0 $(GO) build -o webhook -ldflags '-w -extldflags "-static"' .
+
 .PHONY: clean
 clean:
 	chmod -R u+w $(LOCALBIN) $(OUT) 2>/dev/null || true
-	rm -rf $(LOCALBIN) $(OUT)
+	rm -rf $(LOCALBIN) $(OUT) webhook
 
 .PHONY: build
 build:
