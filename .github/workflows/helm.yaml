@@ -1,0 +1,31 @@
+---
+name: Helm
+
+on:
+  push:
+    paths:
+      - "deploy/**"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "deploy/**"
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+
+      - name: Lint chart
+        run: helm lint deploy/poweradmin-webhook
+
+      - name: Template chart
+        run: |
+          helm template poweradmin-webhook deploy/poweradmin-webhook \
+            --set groupName=acme.example.com
