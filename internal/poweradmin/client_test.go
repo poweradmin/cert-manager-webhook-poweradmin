@@ -8,22 +8,11 @@ import (
 	"testing"
 )
 
-func setupTestServer(t *testing.T, handler http.HandlerFunc) (*httptest.Server, DNSProvider) {
+func setupTestServerWithVersion(t *testing.T, handler http.HandlerFunc, apiVersion string) (*httptest.Server, DNSProvider) {
 	t.Helper()
 	server := httptest.NewServer(handler)
 	t.Cleanup(server.Close)
-	client, err := NewClient(server.URL, "test-api-key", "v2", false)
-	if err != nil {
-		t.Fatalf("failed to create client: %v", err)
-	}
-	return server, client
-}
-
-func setupTestServerV1(t *testing.T, handler http.HandlerFunc) (*httptest.Server, DNSProvider) {
-	t.Helper()
-	server := httptest.NewServer(handler)
-	t.Cleanup(server.Close)
-	client, err := NewClient(server.URL, "test-api-key", "v1", false)
+	client, err := NewClient(server.URL, "test-api-key", apiVersion, false)
 	if err != nil {
 		t.Fatalf("failed to create client: %v", err)
 	}
@@ -71,7 +60,7 @@ func TestGetZoneByName(t *testing.T) {
 		w.WriteHeader(http.StatusNotFound)
 	}
 
-	_, client := setupTestServer(t, handler)
+	_, client := setupTestServerWithVersion(t, handler, "v2")
 	ctx := context.Background()
 
 	zone, err := client.GetZoneByName(ctx, "example.com")
@@ -102,7 +91,7 @@ func TestListTXTRecords(t *testing.T) {
 		w.WriteHeader(http.StatusNotFound)
 	}
 
-	_, client := setupTestServer(t, handler)
+	_, client := setupTestServerWithVersion(t, handler, "v2")
 	ctx := context.Background()
 
 	result, err := client.ListTXTRecords(ctx, 1)
@@ -138,7 +127,7 @@ func TestCreateTXTRecord(t *testing.T) {
 		w.WriteHeader(http.StatusNotFound)
 	}
 
-	_, client := setupTestServer(t, handler)
+	_, client := setupTestServerWithVersion(t, handler, "v2")
 	ctx := context.Background()
 
 	record, err := client.CreateTXTRecord(ctx, 1, "_acme-challenge.example.com", "\"test-key\"", 120)
@@ -159,7 +148,7 @@ func TestDeleteRecord(t *testing.T) {
 		w.WriteHeader(http.StatusNotFound)
 	}
 
-	_, client := setupTestServer(t, handler)
+	_, client := setupTestServerWithVersion(t, handler, "v2")
 	ctx := context.Background()
 
 	err := client.DeleteRecord(ctx, 1, 10)
@@ -189,7 +178,7 @@ func TestV1Paths(t *testing.T) {
 		}
 	}
 
-	_, client := setupTestServerV1(t, handler)
+	_, client := setupTestServerWithVersion(t, handler, "v1")
 	ctx := context.Background()
 
 	_, err := client.GetZones(ctx)
@@ -224,7 +213,7 @@ func TestAuthHeader(t *testing.T) {
 		json.NewEncoder(w).Encode([]Zone{})
 	}
 
-	_, client := setupTestServer(t, handler)
+	_, client := setupTestServerWithVersion(t, handler, "v2")
 	client.GetZones(context.Background())
 
 	if receivedKey != "test-api-key" {
@@ -238,7 +227,7 @@ func TestHTTPErrors(t *testing.T) {
 		w.Write([]byte(`{"error":"unauthorized"}`))
 	}
 
-	_, client := setupTestServer(t, handler)
+	_, client := setupTestServerWithVersion(t, handler, "v2")
 	ctx := context.Background()
 
 	_, err := client.GetZones(ctx)
