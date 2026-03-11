@@ -41,6 +41,46 @@ func TestNewClient(t *testing.T) {
 	}
 }
 
+func TestServerURLNormalization(t *testing.T) {
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/v2/zones" {
+			t.Errorf("expected path /api/v2/zones, got %s", r.URL.Path)
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode([]Zone{{ID: 1, Name: "example.com"}})
+	}
+
+	server := httptest.NewServer(http.HandlerFunc(handler))
+	t.Cleanup(server.Close)
+
+	tests := []struct {
+		name      string
+		serverURL string
+	}{
+		{"no trailing slash", server.URL},
+		{"single trailing slash", server.URL + "/"},
+		{"multiple trailing slashes", server.URL + "///"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client, err := NewClient(tt.serverURL, "test-api-key", "v2", false)
+			if err != nil {
+				t.Fatalf("NewClient() error = %v", err)
+			}
+			zones, err := client.GetZones(context.Background())
+			if err != nil {
+				t.Fatalf("GetZones() error = %v", err)
+			}
+			if len(zones) != 1 {
+				t.Errorf("expected 1 zone, got %d", len(zones))
+			}
+		})
+	}
+}
+
 func TestGetZoneByName(t *testing.T) {
 	zones := []Zone{
 		{ID: 1, Name: "example.com"},
@@ -54,7 +94,7 @@ func TestGetZoneByName(t *testing.T) {
 		}
 		if r.URL.Path == "/api/v2/zones" {
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(zones)
+			_ = json.NewEncoder(w).Encode(zones)
 			return
 		}
 		w.WriteHeader(http.StatusNotFound)
@@ -85,7 +125,7 @@ func TestListTXTRecords(t *testing.T) {
 	handler := func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/api/v2/zones/1/records" && r.URL.Query().Get("type") == "TXT" {
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(records)
+			_ = json.NewEncoder(w).Encode(records)
 			return
 		}
 		w.WriteHeader(http.StatusNotFound)
@@ -107,7 +147,11 @@ func TestCreateTXTRecord(t *testing.T) {
 	handler := func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost && r.URL.Path == "/api/v2/zones/1/records" {
 			var body map[string]interface{}
-			json.NewDecoder(r.Body).Decode(&body)
+			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+				t.Errorf("failed to decode request body: %v", err)
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
 
 			if body["type"] != "TXT" {
 				t.Errorf("expected type=TXT, got %v", body["type"])
@@ -116,9 +160,9 @@ func TestCreateTXTRecord(t *testing.T) {
 				t.Errorf("expected name=_acme-challenge.example.com, got %v", body["name"])
 			}
 
-			w.WriteHeader(http.StatusCreated)
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(Record{
+			w.WriteHeader(http.StatusCreated)
+			_ = json.NewEncoder(w).Encode(Record{
 				ID: 20, Name: "_acme-challenge.example.com",
 				Type: "TXT", Content: "\"test-key\"", TTL: 120,
 			})
@@ -165,12 +209,12 @@ func TestV1Paths(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		switch {
 		case r.URL.Path == "/api/v1/zones":
-			json.NewEncoder(w).Encode([]Zone{{ID: 1, Name: "example.com"}})
+			_ = json.NewEncoder(w).Encode([]Zone{{ID: 1, Name: "example.com"}})
 		case r.URL.Path == "/api/v1/zones/1/records" && r.Method == http.MethodGet:
-			json.NewEncoder(w).Encode([]Record{})
+			_ = json.NewEncoder(w).Encode([]Record{})
 		case r.URL.Path == "/api/v1/zones/1/records" && r.Method == http.MethodPost:
 			w.WriteHeader(http.StatusCreated)
-			json.NewEncoder(w).Encode(Record{ID: 1})
+			_ = json.NewEncoder(w).Encode(Record{ID: 1})
 		case r.URL.Path == "/api/v1/zones/1/records/1" && r.Method == http.MethodDelete:
 			w.WriteHeader(http.StatusNoContent)
 		default:
@@ -210,11 +254,11 @@ func TestAuthHeader(t *testing.T) {
 	handler := func(w http.ResponseWriter, r *http.Request) {
 		receivedKey = r.Header.Get("X-API-Key")
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode([]Zone{})
+		_ = json.NewEncoder(w).Encode([]Zone{})
 	}
 
 	_, client := setupTestServerWithVersion(t, handler, "v2")
-	client.GetZones(context.Background())
+	_, _ = client.GetZones(context.Background())
 
 	if receivedKey != "test-api-key" {
 		t.Errorf("expected X-API-Key=test-api-key, got %q", receivedKey)
@@ -222,16 +266,132 @@ func TestAuthHeader(t *testing.T) {
 }
 
 func TestHTTPErrors(t *testing.T) {
+	tests := []struct {
+		name       string
+		statusCode int
+	}{
+		{"unauthorized", http.StatusUnauthorized},
+		{"forbidden", http.StatusForbidden},
+		{"internal server error", http.StatusInternalServerError},
+		{"bad gateway", http.StatusBadGateway},
+		{"service unavailable", http.StatusServiceUnavailable},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			handler := func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(tt.statusCode)
+				_, _ = w.Write([]byte(`{"error":"test error"}`))
+			}
+
+			_, client := setupTestServerWithVersion(t, handler, "v2")
+			ctx := context.Background()
+
+			_, err := client.GetZones(ctx)
+			if err == nil {
+				t.Errorf("expected error for %d response", tt.statusCode)
+			}
+		})
+	}
+}
+
+func TestGetZones_EmptyResponse(t *testing.T) {
 	handler := func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte(`{"error":"unauthorized"}`))
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode([]Zone{})
 	}
 
 	_, client := setupTestServerWithVersion(t, handler, "v2")
-	ctx := context.Background()
+	zones, err := client.GetZones(context.Background())
+	if err != nil {
+		t.Fatalf("GetZones() error = %v", err)
+	}
+	if len(zones) != 0 {
+		t.Errorf("expected 0 zones, got %d", len(zones))
+	}
+}
 
-	_, err := client.GetZones(ctx)
+func TestGetZones_InvalidJSON(t *testing.T) {
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`not valid json`))
+	}
+
+	_, client := setupTestServerWithVersion(t, handler, "v2")
+	_, err := client.GetZones(context.Background())
 	if err == nil {
-		t.Error("expected error for 401 response")
+		t.Error("expected error for invalid JSON response")
+	}
+}
+
+func TestListTXTRecords_EmptyZone(t *testing.T) {
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode([]Record{})
+	}
+
+	_, client := setupTestServerWithVersion(t, handler, "v2")
+	records, err := client.ListTXTRecords(context.Background(), 1)
+	if err != nil {
+		t.Fatalf("ListTXTRecords() error = %v", err)
+	}
+	if len(records) != 0 {
+		t.Errorf("expected 0 records, got %d", len(records))
+	}
+}
+
+func TestDeleteRecord_HTTPErrors(t *testing.T) {
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`{"error":"not found"}`))
+	}
+
+	_, client := setupTestServerWithVersion(t, handler, "v2")
+	err := client.DeleteRecord(context.Background(), 1, 999)
+	if err == nil {
+		t.Error("expected error for 404 response on delete")
+	}
+}
+
+func TestCreateTXTRecord_ServerError(t *testing.T) {
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(`{"error":"internal error"}`))
+	}
+
+	_, client := setupTestServerWithVersion(t, handler, "v2")
+	_, err := client.CreateTXTRecord(context.Background(), 1, "test", "val", 120)
+	if err == nil {
+		t.Error("expected error for 500 response on create")
+	}
+}
+
+func TestNewClient_InsecureTLS(t *testing.T) {
+	client, err := NewClient("https://localhost", "key", "v2", true)
+	if err != nil {
+		t.Fatalf("NewClient() with insecure=true error = %v", err)
+	}
+	if client == nil {
+		t.Error("expected non-nil client with insecure=true")
+	}
+}
+
+func TestRequestContentType(t *testing.T) {
+	var receivedContentType, receivedAccept string
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		receivedContentType = r.Header.Get("Content-Type")
+		receivedAccept = r.Header.Get("Accept")
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode([]Zone{})
+	}
+
+	_, client := setupTestServerWithVersion(t, handler, "v2")
+	_, _ = client.GetZones(context.Background())
+
+	if receivedContentType != "application/json" {
+		t.Errorf("expected Content-Type=application/json, got %q", receivedContentType)
+	}
+	if receivedAccept != "application/json" {
+		t.Errorf("expected Accept=application/json, got %q", receivedAccept)
 	}
 }

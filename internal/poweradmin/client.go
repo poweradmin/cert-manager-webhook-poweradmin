@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -52,7 +53,7 @@ func (c *client) doRequest(ctx context.Context, method, path string, body interf
 	if err != nil {
 		return nil, 0, fmt.Errorf("request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -167,7 +168,7 @@ func NewClient(serverURL, apiKey, apiVersion string, insecure bool) (DNSProvider
 	}
 
 	return &client{
-		serverURL:  serverURL,
+		serverURL:  strings.TrimRight(serverURL, "/"),
 		apiKey:     apiKey,
 		pathPrefix: pathPrefix,
 		httpClient: httpClient,
