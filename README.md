@@ -86,14 +86,14 @@ spec:
 
 ## Configuration Options
 
-| Field | Required | Default | Description |
-|-------|----------|---------|-------------|
-| `serverURL` | Yes | - | Base URL of the PowerAdmin instance |
-| `apiKeySecretRef.name` | Yes | - | Name of the Secret containing the API key |
-| `apiKeySecretRef.key` | Yes | - | Key within the Secret |
-| `apiVersion` | No | `"v2"` | PowerAdmin API version (`"v1"` or `"v2"`) |
-| `ttl` | No | `120` | TTL for TXT records in seconds |
-| `insecure` | No | `false` | Skip TLS verification for PowerAdmin API |
+| Field                  | Required | Default | Description                               |
+|------------------------|----------|---------|-------------------------------------------|
+| `serverURL`            | Yes      | -       | Base URL of the PowerAdmin instance       |
+| `apiKeySecretRef.name` | Yes      | -       | Name of the Secret containing the API key |
+| `apiKeySecretRef.key`  | Yes      | -       | Key within the Secret                     |
+| `apiVersion`           | No       | `"v2"`  | PowerAdmin API version (`"v1"` or `"v2"`) |
+| `ttl`                  | No       | `120`   | TTL for TXT records in seconds            |
+| `insecure`             | No       | `false` | Skip TLS verification for PowerAdmin API  |
 
 ## Development
 
@@ -119,4 +119,4 @@ make test
 
 ## License
 
-See [LICENSE](LICENSE) file.
+Apache License 2.0 - see [LICENSE](LICENSE) file.
