@@ -119,7 +119,7 @@ jobs:
         run: helm lint deploy/poweradmin-webhook
 
       - name: Package chart
-        run: helm package deploy/poweradmin-webhook --destination .helm-out
+        run: helm package deploy/poweradmin-webhook --version ${{ steps.version.outputs.version }} --app-version ${{ steps.version.outputs.version }} --destination .helm-out
 
       - name: Push chart to OCI registry
         run: helm push .helm-out/poweradmin-webhook-${{ steps.version.outputs.version }}.tgz oci://ghcr.io/poweradmin/charts
