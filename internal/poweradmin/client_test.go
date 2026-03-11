@@ -68,11 +68,21 @@ func writeV2CreateRecordResponse(w http.ResponseWriter, record Record) {
 	_ = json.NewEncoder(w).Encode(resp)
 }
 
-// writeV1CreateRecordResponse writes a wrapped v1 create-record response.
+// writeV1CreateRecordResponse writes a wrapped v1 create-record response
+// using "record_id" instead of "id", matching the real PowerAdmin v1 API.
 func writeV1CreateRecordResponse(w http.ResponseWriter, record Record) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	recordData, _ := json.Marshal(record)
+	v1data := v1RecordData{
+		RecordID: record.ID,
+		Name:     record.Name,
+		Type:     record.Type,
+		Content:  record.Content,
+		TTL:      record.TTL,
+		Priority: record.Priority,
+		Disabled: record.Disabled,
+	}
+	recordData, _ := json.Marshal(v1data)
 	resp := apiResponse{
 		Success: true,
 		Data:    recordData,
@@ -294,9 +304,12 @@ func TestV1Paths(t *testing.T) {
 		t.Fatalf("V1 ListTXTRecords() error = %v", err)
 	}
 
-	_, err = client.CreateTXTRecord(ctx, 1, "test", "\"val\"", 120)
+	rec, err := client.CreateTXTRecord(ctx, 1, "test", "\"val\"", 120)
 	if err != nil {
 		t.Fatalf("V1 CreateTXTRecord() error = %v", err)
+	}
+	if rec.ID != 1 {
+		t.Errorf("V1 CreateTXTRecord() record.ID = %d, want 1 (from record_id)", rec.ID)
 	}
 
 	err = client.DeleteRecord(ctx, 1, 1)

@@ -38,6 +38,17 @@ type v2RecordData struct {
 	Record Record `json:"record"`
 }
 
+// v1RecordData maps the v1 create-record response where the ID field is "record_id".
+type v1RecordData struct {
+	RecordID int      `json:"record_id"`
+	Name     string   `json:"name"`
+	Type     string   `json:"type"`
+	Content  string   `json:"content"`
+	TTL      int      `json:"ttl"`
+	Priority int      `json:"priority"`
+	Disabled FlexBool `json:"disabled"`
+}
+
 // client implements DNSProvider for any PowerAdmin API version.
 type client struct {
 	serverURL  string
@@ -186,9 +197,19 @@ func (c *client) CreateTXTRecord(ctx context.Context, zoneID int, name, content 
 		}
 		record = wrapper.Record
 	} else {
-		// V1: data is flat record object (with record_id instead of id)
-		if err := json.Unmarshal(resp.Data, &record); err != nil {
+		// V1: data is flat object with "record_id" instead of "id"
+		var v1data v1RecordData
+		if err := json.Unmarshal(resp.Data, &v1data); err != nil {
 			return nil, fmt.Errorf("failed to parse v1 record data: %w", err)
+		}
+		record = Record{
+			ID:       v1data.RecordID,
+			Name:     v1data.Name,
+			Type:     v1data.Type,
+			Content:  v1data.Content,
+			TTL:      v1data.TTL,
+			Priority: v1data.Priority,
+			Disabled: v1data.Disabled,
 		}
 	}
 	return &record, nil
