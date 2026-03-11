@@ -61,6 +61,9 @@ jobs:
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Install Syft
+        uses: anchore/sbom-action/download-syft@v0
+
       - name: Build snapshot image
         uses: goreleaser/goreleaser-action@v7
         with:
