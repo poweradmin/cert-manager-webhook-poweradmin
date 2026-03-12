@@ -71,7 +71,7 @@ jobs:
         uses: goreleaser/goreleaser-action@v7
         with:
           version: latest
-          args: release --snapshot --clean
+          args: release --snapshot --clean --skip=sign
         env:
           CI_COMMIT_TIMESTAMP: ${{ github.event.repository.updated_at }}
           CI_COMMIT_SHA: ${{ github.sha }}
