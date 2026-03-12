@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.3](https://github.com/poweradmin/cert-manager-webhook-poweradmin/compare/v0.1.2...v0.1.3) (2026-03-12)
+
+
+### Bug Fixes
+
+* **ci:** skip cosign signing during goreleaser snapshot in security workflow ([32943bd](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/32943bd9107d32201e2c9082be70a941f3c95a1d))
+
 ## [0.1.2](https://github.com/poweradmin/cert-manager-webhook-poweradmin/compare/v0.1.1...v0.1.2) (2026-03-11)
 
 
