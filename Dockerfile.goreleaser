@@ -1,4 +1,5 @@
 FROM gcr.io/distroless/static-debian12:nonroot
 USER 20000:20000
-COPY --chmod=555 cert-manager-webhook-poweradmin /usr/local/bin/
+ARG TARGETPLATFORM
+COPY --chmod=555 ${TARGETPLATFORM}/cert-manager-webhook-poweradmin /usr/local/bin/
 ENTRYPOINT ["/usr/local/bin/cert-manager-webhook-poweradmin"]

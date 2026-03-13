@@ -40,97 +40,19 @@ signs:
 sboms:
   - artifacts: archive
 
-dockers:
-  # GitHub Container Registry - amd64
-  - use: buildx
-    goos: linux
-    goarch: amd64
-    dockerfile: Dockerfile.goreleaser
-    image_templates:
-      - "ghcr.io/poweradmin/cert-manager-webhook-poweradmin:latest-amd64"
-      - "ghcr.io/poweradmin/cert-manager-webhook-poweradmin:{{ .Tag }}-amd64"
-    build_flag_templates:
-      - "--pull"
-      - "--platform=linux/amd64"
-      - "--label=org.opencontainers.image.created={{.Date}}"
-      - "--label=org.opencontainers.image.title={{.ProjectName}}"
-      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
-      - "--label=org.opencontainers.image.version={{.Version}}"
-      - "--label=org.opencontainers.image.source={{.GitURL}}"
-
-  # GitHub Container Registry - arm64
-  - use: buildx
-    goos: linux
-    goarch: arm64
-    dockerfile: Dockerfile.goreleaser
-    image_templates:
-      - "ghcr.io/poweradmin/cert-manager-webhook-poweradmin:latest-arm64"
-      - "ghcr.io/poweradmin/cert-manager-webhook-poweradmin:{{ .Tag }}-arm64"
-    build_flag_templates:
-      - "--pull"
-      - "--platform=linux/arm64"
-      - "--label=org.opencontainers.image.created={{.Date}}"
-      - "--label=org.opencontainers.image.title={{.ProjectName}}"
-      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
-      - "--label=org.opencontainers.image.version={{.Version}}"
-      - "--label=org.opencontainers.image.source={{.GitURL}}"
-
-  # Docker Hub - amd64
-  - use: buildx
-    goos: linux
-    goarch: amd64
-    dockerfile: Dockerfile.goreleaser
-    image_templates:
-      - "docker.io/poweradmin/cert-manager-webhook-poweradmin:latest-amd64"
-      - "docker.io/poweradmin/cert-manager-webhook-poweradmin:{{ .Tag }}-amd64"
-    build_flag_templates:
-      - "--pull"
-      - "--platform=linux/amd64"
-      - "--label=org.opencontainers.image.created={{.Date}}"
-      - "--label=org.opencontainers.image.title={{.ProjectName}}"
-      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
-      - "--label=org.opencontainers.image.version={{.Version}}"
-      - "--label=org.opencontainers.image.source={{.GitURL}}"
-
-  # Docker Hub - arm64
-  - use: buildx
-    goos: linux
-    goarch: arm64
-    dockerfile: Dockerfile.goreleaser
-    image_templates:
-      - "docker.io/poweradmin/cert-manager-webhook-poweradmin:latest-arm64"
-      - "docker.io/poweradmin/cert-manager-webhook-poweradmin:{{ .Tag }}-arm64"
-    build_flag_templates:
-      - "--pull"
-      - "--platform=linux/arm64"
-      - "--label=org.opencontainers.image.created={{.Date}}"
-      - "--label=org.opencontainers.image.title={{.ProjectName}}"
-      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
-      - "--label=org.opencontainers.image.version={{.Version}}"
-      - "--label=org.opencontainers.image.source={{.GitURL}}"
-
-docker_manifests:
-  # GitHub Container Registry
-  - name_template: "ghcr.io/poweradmin/cert-manager-webhook-poweradmin:latest"
-    image_templates:
-      - "ghcr.io/poweradmin/cert-manager-webhook-poweradmin:latest-amd64"
-      - "ghcr.io/poweradmin/cert-manager-webhook-poweradmin:latest-arm64"
-
-  - name_template: "ghcr.io/poweradmin/cert-manager-webhook-poweradmin:{{ .Tag }}"
-    image_templates:
-      - "ghcr.io/poweradmin/cert-manager-webhook-poweradmin:{{ .Tag }}-amd64"
-      - "ghcr.io/poweradmin/cert-manager-webhook-poweradmin:{{ .Tag }}-arm64"
-
-  # Docker Hub
-  - name_template: "docker.io/poweradmin/cert-manager-webhook-poweradmin:latest"
-    image_templates:
-      - "docker.io/poweradmin/cert-manager-webhook-poweradmin:latest-amd64"
-      - "docker.io/poweradmin/cert-manager-webhook-poweradmin:latest-arm64"
-
-  - name_template: "docker.io/poweradmin/cert-manager-webhook-poweradmin:{{ .Tag }}"
-    image_templates:
-      - "docker.io/poweradmin/cert-manager-webhook-poweradmin:{{ .Tag }}-amd64"
-      - "docker.io/poweradmin/cert-manager-webhook-poweradmin:{{ .Tag }}-arm64"
+dockers_v2:
+  - images:
+      - "ghcr.io/poweradmin/cert-manager-webhook-poweradmin"
+      - "docker.io/poweradmin/cert-manager-webhook-poweradmin"
+    tags:
+      - "{{ .Tag }}"
+      - latest
+    labels:
+      "org.opencontainers.image.created": "{{.Date}}"
+      "org.opencontainers.image.title": "{{.ProjectName}}"
+      "org.opencontainers.image.revision": "{{.FullCommit}}"
+      "org.opencontainers.image.version": "{{.Version}}"
+      "org.opencontainers.image.source": "{{.GitURL}}"
 
 docker_signs:
   - cmd: cosign
