@@ -3,6 +3,8 @@
 [![CI](https://github.com/poweradmin/cert-manager-webhook-poweradmin/actions/workflows/test.yaml/badge.svg)](https://github.com/poweradmin/cert-manager-webhook-poweradmin/actions/workflows/test.yaml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/poweradmin/cert-manager-webhook-poweradmin)](https://goreportcard.com/report/github.com/poweradmin/cert-manager-webhook-poweradmin)
 [![GitHub release](https://img.shields.io/github/v/release/poweradmin/cert-manager-webhook-poweradmin)](https://github.com/poweradmin/cert-manager-webhook-poweradmin/releases)
+[![License](https://img.shields.io/github/license/poweradmin/cert-manager-webhook-poweradmin)](LICENSE)
+[![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/poweradmin-webhook)](https://artifacthub.io/packages/helm/poweradmin-webhook/poweradmin-webhook)
 
 A [cert-manager](https://cert-manager.io/) webhook for [PowerAdmin](https://www.poweradmin.org/) DNS provider, enabling DNS-01 ACME challenges for automated certificate issuance (e.g., Let's Encrypt) in Kubernetes.
 
@@ -22,7 +24,15 @@ Multi-platform images (amd64/arm64) are published on each release:
 
 ## Installation
 
-### Using Helm
+### Using Helm (OCI Registry)
+
+```bash
+helm install poweradmin-webhook oci://ghcr.io/poweradmin/charts/poweradmin-webhook \
+  --namespace cert-manager \
+  --set groupName=acme.yourdomain.com
+```
+
+### Using Helm (Local Chart)
 
 ```bash
 helm install poweradmin-webhook deploy/poweradmin-webhook \
@@ -31,6 +41,12 @@ helm install poweradmin-webhook deploy/poweradmin-webhook \
 ```
 
 > **Important:** Set `groupName` to a unique domain you own. This value must match what you configure in your Issuer/ClusterIssuer.
+
+### Uninstall
+
+```bash
+helm uninstall poweradmin-webhook --namespace cert-manager
+```
 
 ## Configuration
 
