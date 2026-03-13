@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.1.4](https://github.com/poweradmin/cert-manager-webhook-poweradmin/compare/v0.1.3...v0.1.4) (2026-03-13)
+
+
+### Bug Fixes
+
+* correct Artifact Hub badge link ([c9b32d7](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/c9b32d7f9f8c10859dceea76739e39cb2191b5f0))
+* correct Go Report Card badge URL ([f88103a](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/f88103a1cadcf2a2f99cf7a08f1c6343c9d5ad87))
+
+
+### Refactoring
+
+* rename helm chart from poweradmin-webhook to cert-manager-webhook-poweradmin ([6ea2cb9](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/6ea2cb9e141387d85e65c1f2b679a516eb76fdf7))
+
+
+### Documentation
+
+* add links to container registry pages ([7329901](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/7329901eb9d970b189c6c6766d741433e8580a86))
+* add OCI helm install, uninstall section, license and Artifact Hub badges ([4c52987](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/4c52987bedb7e8eb7f623b6d22735b17a67b5af0))
+
 ## [0.1.3](https://github.com/poweradmin/cert-manager-webhook-poweradmin/compare/v0.1.2...v0.1.3) (2026-03-12)
 
 
