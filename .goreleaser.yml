@@ -41,7 +41,8 @@ sboms:
   - artifacts: archive
 
 dockers_v2:
-  - images:
+  - dockerfile: Dockerfile.goreleaser
+    images:
       - "ghcr.io/poweradmin/cert-manager-webhook-poweradmin"
       - "docker.io/poweradmin/cert-manager-webhook-poweradmin"
     tags:
