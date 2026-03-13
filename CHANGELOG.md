@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.1.5](https://github.com/poweradmin/cert-manager-webhook-poweradmin/compare/v0.1.4...v0.1.5) (2026-03-13)
+
+
+### Bug Fixes
+
+* revert cosign-installer to v3 (no v4 major tag exists) ([99f180e](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/99f180e1da0db7675debc9af9fce700c808c89c5))
+* specify dockerfile in goreleaser dockers_v2 config ([c2969cc](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/c2969cc1b1b709d60a196c7e46d67e94d2a8ad4d))
+
+
+### Documentation
+
+* add helm chart README for Artifact Hub ([6d032af](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/6d032aff80c76385f9aae3d4e93d5620ff06b7d1))
+
 ## [0.1.4](https://github.com/poweradmin/cert-manager-webhook-poweradmin/compare/v0.1.3...v0.1.4) (2026-03-13)
 
 
