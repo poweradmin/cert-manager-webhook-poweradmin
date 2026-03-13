@@ -1,6 +1,6 @@
 # Binaries
-webhook
-cert-manager-webhook-poweradmin
+/webhook
+/cert-manager-webhook-poweradmin
 _out/
 bin/
 

@@ -23,9 +23,9 @@ jobs:
         uses: azure/setup-helm@v4
 
       - name: Lint chart
-        run: helm lint deploy/poweradmin-webhook
+        run: helm lint deploy/cert-manager-webhook-poweradmin
 
       - name: Template chart
         run: |
-          helm template poweradmin-webhook deploy/poweradmin-webhook \
+          helm template cert-manager-webhook-poweradmin deploy/cert-manager-webhook-poweradmin \
             --set groupName=acme.example.com

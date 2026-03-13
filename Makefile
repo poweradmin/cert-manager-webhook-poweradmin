@@ -7,7 +7,7 @@ IMAGE_TAG := "latest"
 
 OUT := $(shell pwd)/_out
 
-HELM_FILES := $(shell find deploy/poweradmin-webhook)
+HELM_FILES := $(shell find deploy/cert-manager-webhook-poweradmin)
 
 test: setup-envtest
 	TEST_ASSET_ETCD=$(LOCALBIN)/k8s/$(ENVTEST_K8S_VERSION)-$(OS)-$(ARCH)/etcd \
@@ -44,10 +44,10 @@ build:
 rendered-manifest.yaml: $(OUT)/rendered-manifest.yaml
 
 $(OUT)/rendered-manifest.yaml: $(HELM_FILES) | $(OUT)
-	helm template poweradmin-webhook \
+	helm template cert-manager-webhook-poweradmin \
             --set image.repository=$(IMAGE_NAME) \
             --set image.tag=$(IMAGE_TAG) \
-            deploy/poweradmin-webhook > $@
+            deploy/cert-manager-webhook-poweradmin > $@
 
 $(OUT):
 	mkdir -p $(OUT)

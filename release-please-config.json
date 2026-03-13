@@ -8,12 +8,12 @@
       "extra-files": [
         {
           "type": "yaml",
-          "path": "deploy/poweradmin-webhook/Chart.yaml",
+          "path": "deploy/cert-manager-webhook-poweradmin/Chart.yaml",
           "jsonpath": "$.version"
         },
         {
           "type": "yaml",
-          "path": "deploy/poweradmin-webhook/Chart.yaml",
+          "path": "deploy/cert-manager-webhook-poweradmin/Chart.yaml",
           "jsonpath": "$.appVersion"
         }
       ],

@@ -1,11 +1,11 @@
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: {{ include "poweradmin-webhook.fullname" . }}
+  name: {{ include "cert-manager-webhook-poweradmin.fullname" . }}
   namespace: {{ .Release.Namespace | quote }}
   labels:
-    app: {{ include "poweradmin-webhook.name" . }}
-    chart: {{ include "poweradmin-webhook.chart" . }}
+    app: {{ include "cert-manager-webhook-poweradmin.name" . }}
+    chart: {{ include "cert-manager-webhook-poweradmin.chart" . }}
     release: {{ .Release.Name }}
     heritage: {{ .Release.Service }}
 ---
@@ -15,11 +15,11 @@ metadata:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: {{ include "poweradmin-webhook.fullname" . }}:webhook-authentication-reader
+  name: {{ include "cert-manager-webhook-poweradmin.fullname" . }}:webhook-authentication-reader
   namespace: kube-system
   labels:
-    app: {{ include "poweradmin-webhook.name" . }}
-    chart: {{ include "poweradmin-webhook.chart" . }}
+    app: {{ include "cert-manager-webhook-poweradmin.name" . }}
+    chart: {{ include "cert-manager-webhook-poweradmin.chart" . }}
     release: {{ .Release.Name }}
     heritage: {{ .Release.Service }}
 roleRef:
@@ -29,7 +29,7 @@ roleRef:
 subjects:
   - apiGroup: ""
     kind: ServiceAccount
-    name: {{ include "poweradmin-webhook.fullname" . }}
+    name: {{ include "cert-manager-webhook-poweradmin.fullname" . }}
     namespace: {{ .Release.Namespace }}
 ---
 # apiserver gets the auth-delegator role to delegate auth decisions to
@@ -37,10 +37,10 @@ subjects:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: {{ include "poweradmin-webhook.fullname" . }}:auth-delegator
+  name: {{ include "cert-manager-webhook-poweradmin.fullname" . }}:auth-delegator
   labels:
-    app: {{ include "poweradmin-webhook.name" . }}
-    chart: {{ include "poweradmin-webhook.chart" . }}
+    app: {{ include "cert-manager-webhook-poweradmin.name" . }}
+    chart: {{ include "cert-manager-webhook-poweradmin.chart" . }}
     release: {{ .Release.Name }}
     heritage: {{ .Release.Service }}
 roleRef:
@@ -50,17 +50,17 @@ roleRef:
 subjects:
   - apiGroup: ""
     kind: ServiceAccount
-    name: {{ include "poweradmin-webhook.fullname" . }}
+    name: {{ include "cert-manager-webhook-poweradmin.fullname" . }}
     namespace: {{ .Release.Namespace }}
 ---
 # Grant cert-manager permission to validate using our apiserver
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: {{ include "poweradmin-webhook.fullname" . }}:domain-solver
+  name: {{ include "cert-manager-webhook-poweradmin.fullname" . }}:domain-solver
   labels:
-    app: {{ include "poweradmin-webhook.name" . }}
-    chart: {{ include "poweradmin-webhook.chart" . }}
+    app: {{ include "cert-manager-webhook-poweradmin.name" . }}
+    chart: {{ include "cert-manager-webhook-poweradmin.chart" . }}
     release: {{ .Release.Name }}
     heritage: {{ .Release.Service }}
 rules:
@@ -74,16 +74,16 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: {{ include "poweradmin-webhook.fullname" . }}:domain-solver
+  name: {{ include "cert-manager-webhook-poweradmin.fullname" . }}:domain-solver
   labels:
-    app: {{ include "poweradmin-webhook.name" . }}
-    chart: {{ include "poweradmin-webhook.chart" . }}
+    app: {{ include "cert-manager-webhook-poweradmin.name" . }}
+    chart: {{ include "cert-manager-webhook-poweradmin.chart" . }}
     release: {{ .Release.Name }}
     heritage: {{ .Release.Service }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: {{ include "poweradmin-webhook.fullname" . }}:domain-solver
+  name: {{ include "cert-manager-webhook-poweradmin.fullname" . }}:domain-solver
 subjects:
   - apiGroup: ""
     kind: ServiceAccount
@@ -94,10 +94,10 @@ subjects:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: {{ include "poweradmin-webhook.fullname" . }}:secret-reader
+  name: {{ include "cert-manager-webhook-poweradmin.fullname" . }}:secret-reader
   labels:
-    app: {{ include "poweradmin-webhook.name" . }}
-    chart: {{ include "poweradmin-webhook.chart" . }}
+    app: {{ include "cert-manager-webhook-poweradmin.name" . }}
+    chart: {{ include "cert-manager-webhook-poweradmin.chart" . }}
     release: {{ .Release.Name }}
     heritage: {{ .Release.Service }}
 rules:
@@ -111,18 +111,18 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: {{ include "poweradmin-webhook.fullname" . }}:secret-reader
+  name: {{ include "cert-manager-webhook-poweradmin.fullname" . }}:secret-reader
   labels:
-    app: {{ include "poweradmin-webhook.name" . }}
-    chart: {{ include "poweradmin-webhook.chart" . }}
+    app: {{ include "cert-manager-webhook-poweradmin.name" . }}
+    chart: {{ include "cert-manager-webhook-poweradmin.chart" . }}
     release: {{ .Release.Name }}
     heritage: {{ .Release.Service }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: {{ include "poweradmin-webhook.fullname" . }}:secret-reader
+  name: {{ include "cert-manager-webhook-poweradmin.fullname" . }}:secret-reader
 subjects:
   - apiGroup: ""
     kind: ServiceAccount
-    name: {{ include "poweradmin-webhook.fullname" . }}
+    name: {{ include "cert-manager-webhook-poweradmin.fullname" . }}
     namespace: {{ .Release.Namespace }}

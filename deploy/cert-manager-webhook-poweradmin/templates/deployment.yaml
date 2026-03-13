@@ -1,26 +1,26 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "poweradmin-webhook.fullname" . }}
+  name: {{ include "cert-manager-webhook-poweradmin.fullname" . }}
   namespace: {{ .Release.Namespace | quote }}
   labels:
-    app: {{ include "poweradmin-webhook.name" . }}
-    chart: {{ include "poweradmin-webhook.chart" . }}
+    app: {{ include "cert-manager-webhook-poweradmin.name" . }}
+    chart: {{ include "cert-manager-webhook-poweradmin.chart" . }}
     release: {{ .Release.Name }}
     heritage: {{ .Release.Service }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      app: {{ include "poweradmin-webhook.name" . }}
+      app: {{ include "cert-manager-webhook-poweradmin.name" . }}
       release: {{ .Release.Name }}
   template:
     metadata:
       labels:
-        app: {{ include "poweradmin-webhook.name" . }}
+        app: {{ include "cert-manager-webhook-poweradmin.name" . }}
         release: {{ .Release.Name }}
     spec:
-      serviceAccountName: {{ include "poweradmin-webhook.fullname" . }}
+      serviceAccountName: {{ include "cert-manager-webhook-poweradmin.fullname" . }}
       {{- with .Values.podSecurityContext }}
       securityContext:
 {{ toYaml . | indent 8 }}
@@ -57,7 +57,7 @@ spec:
       volumes:
         - name: certs
           secret:
-            secretName: {{ include "poweradmin-webhook.servingCertificate" . }}
+            secretName: {{ include "cert-manager-webhook-poweradmin.servingCertificate" . }}
     {{- with .Values.nodeSelector }}
       nodeSelector:
 {{ toYaml . | indent 8 }}

@@ -112,19 +112,19 @@ jobs:
 
       - name: Update Chart.yaml version
         run: |
-          sed -i "s/^version:.*/version: ${{ steps.version.outputs.version }}/" deploy/poweradmin-webhook/Chart.yaml
-          sed -i "s/^appVersion:.*/appVersion: \"${{ steps.version.outputs.version }}\"/" deploy/poweradmin-webhook/Chart.yaml
+          sed -i "s/^version:.*/version: ${{ steps.version.outputs.version }}/" deploy/cert-manager-webhook-poweradmin/Chart.yaml
+          sed -i "s/^appVersion:.*/appVersion: \"${{ steps.version.outputs.version }}\"/" deploy/cert-manager-webhook-poweradmin/Chart.yaml
 
       - name: Lint chart
-        run: helm lint deploy/poweradmin-webhook
+        run: helm lint deploy/cert-manager-webhook-poweradmin
 
       - name: Package chart
-        run: helm package deploy/poweradmin-webhook --version ${{ steps.version.outputs.version }} --app-version ${{ steps.version.outputs.version }} --destination .helm-out
+        run: helm package deploy/cert-manager-webhook-poweradmin --version ${{ steps.version.outputs.version }} --app-version ${{ steps.version.outputs.version }} --destination .helm-out
 
       - name: Push chart to OCI registry
-        run: helm push .helm-out/poweradmin-webhook-${{ steps.version.outputs.version }}.tgz oci://ghcr.io/poweradmin/charts
+        run: helm push .helm-out/cert-manager-webhook-poweradmin-${{ steps.version.outputs.version }}.tgz oci://ghcr.io/poweradmin/charts
 
       - name: Sign chart with cosign
-        run: cosign sign --yes ghcr.io/poweradmin/charts/poweradmin-webhook:${{ steps.version.outputs.version }}
+        run: cosign sign --yes ghcr.io/poweradmin/charts/cert-manager-webhook-poweradmin:${{ steps.version.outputs.version }}
         env:
           COSIGN_EXPERIMENTAL: "1"
