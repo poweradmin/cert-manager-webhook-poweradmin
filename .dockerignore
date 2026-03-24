@@ -1,8 +1,11 @@
+.git/
 .github/
 .idea/
 .vscode/
+.claude/
 .DS_Store
 .env
+.gocache*/
 .goreleaser.yml
 .golangci.yaml
 .yamllint.yaml
@@ -18,13 +21,17 @@ coverage.*
 *.out
 *.coverprofile
 
-# Documentation & config
+# Documentation
 CHANGELOG.md
+README.md
+LICENSE
+
+# AI assistant files
 CLAUDE.md
 AGENTS.md
 GEMINI.md
-README.md
-LICENSE
+
+# Build config (not needed inside image)
 Makefile
 Dockerfile
 Dockerfile.goreleaser
