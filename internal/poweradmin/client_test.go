@@ -45,8 +45,32 @@ func writeV1ZonesResponse(w http.ResponseWriter, zones []Zone) {
 	_ = json.NewEncoder(w).Encode(resp)
 }
 
-// writeRecordsResponse writes a wrapped records response (same for v1 and v2).
-func writeRecordsResponse(w http.ResponseWriter, records []Record) {
+// writeV2RecordsResponse writes a wrapped v2 records response (4.3.0+: {"records": [...]}).
+func writeV2RecordsResponse(w http.ResponseWriter, records []Record) {
+	w.Header().Set("Content-Type", "application/json")
+	recordsData, _ := json.Marshal(records)
+	resp := apiResponse{
+		Success: true,
+		Data:    json.RawMessage(`{"records":` + string(recordsData) + `}`),
+		Message: "Records retrieved successfully",
+	}
+	_ = json.NewEncoder(w).Encode(resp)
+}
+
+// writeV1RecordsResponse writes a flat v1 records response (data is [...]).
+func writeV1RecordsResponse(w http.ResponseWriter, records []Record) {
+	w.Header().Set("Content-Type", "application/json")
+	recordsData, _ := json.Marshal(records)
+	resp := apiResponse{
+		Success: true,
+		Data:    recordsData,
+		Message: "Records retrieved successfully",
+	}
+	_ = json.NewEncoder(w).Encode(resp)
+}
+
+// writeV2LegacyRecordsResponse writes a flat v2 records response (pre-4.3.0: data is [...]).
+func writeV2LegacyRecordsResponse(w http.ResponseWriter, records []Record) {
 	w.Header().Set("Content-Type", "application/json")
 	recordsData, _ := json.Marshal(records)
 	resp := apiResponse{
@@ -194,24 +218,45 @@ func TestListTXTRecords(t *testing.T) {
 		{ID: 10, Name: "_acme-challenge.example.com", Type: "TXT", Content: "\"test-key\"", TTL: 120},
 	}
 
-	handler := func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == testV2RecordsPath && r.URL.Query().Get("type") == "TXT" {
-			writeRecordsResponse(w, records)
-			return
+	// Test v2 wrapped response (4.3.0+)
+	t.Run("v2 wrapped", func(t *testing.T) {
+		handler := func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == testV2RecordsPath && r.URL.Query().Get("type") == "TXT" {
+				writeV2RecordsResponse(w, records)
+				return
+			}
+			w.WriteHeader(http.StatusNotFound)
 		}
-		w.WriteHeader(http.StatusNotFound)
-	}
 
-	_, client := setupTestServerWithVersion(t, handler, "v2")
-	ctx := context.Background()
+		_, client := setupTestServerWithVersion(t, handler, "v2")
+		result, err := client.ListTXTRecords(context.Background(), 1)
+		if err != nil {
+			t.Fatalf("ListTXTRecords() error = %v", err)
+		}
+		if len(result) != 1 || result[0].ID != 10 {
+			t.Errorf("ListTXTRecords() = %+v, want 1 record with ID=10", result)
+		}
+	})
 
-	result, err := client.ListTXTRecords(ctx, 1)
-	if err != nil {
-		t.Fatalf("ListTXTRecords() error = %v", err)
-	}
-	if len(result) != 1 || result[0].ID != 10 {
-		t.Errorf("ListTXTRecords() = %+v, want 1 record with ID=10", result)
-	}
+	// Test v2 legacy flat response (pre-4.3.0)
+	t.Run("v2 legacy flat", func(t *testing.T) {
+		handler := func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == testV2RecordsPath && r.URL.Query().Get("type") == "TXT" {
+				writeV2LegacyRecordsResponse(w, records)
+				return
+			}
+			w.WriteHeader(http.StatusNotFound)
+		}
+
+		_, client := setupTestServerWithVersion(t, handler, "v2")
+		result, err := client.ListTXTRecords(context.Background(), 1)
+		if err != nil {
+			t.Fatalf("ListTXTRecords() error = %v", err)
+		}
+		if len(result) != 1 || result[0].ID != 10 {
+			t.Errorf("ListTXTRecords() = %+v, want 1 record with ID=10", result)
+		}
+	})
 }
 
 func TestCreateTXTRecord(t *testing.T) {
@@ -280,7 +325,7 @@ func TestV1Paths(t *testing.T) {
 		case r.URL.Path == "/api/v1/zones":
 			writeV1ZonesResponse(w, []Zone{{ID: 1, Name: "example.com"}})
 		case r.URL.Path == "/api/v1/zones/1/records" && r.Method == http.MethodGet:
-			writeRecordsResponse(w, []Record{})
+			writeV1RecordsResponse(w, []Record{})
 		case r.URL.Path == "/api/v1/zones/1/records" && r.Method == http.MethodPost:
 			writeV1CreateRecordResponse(w, Record{ID: 1})
 		case r.URL.Path == "/api/v1/zones/1/records/1" && r.Method == http.MethodDelete:
@@ -395,7 +440,7 @@ func TestGetZones_InvalidJSON(t *testing.T) {
 
 func TestListTXTRecords_EmptyZone(t *testing.T) {
 	handler := func(w http.ResponseWriter, r *http.Request) {
-		writeRecordsResponse(w, []Record{})
+		writeV2RecordsResponse(w, []Record{})
 	}
 
 	_, client := setupTestServerWithVersion(t, handler, "v2")
@@ -631,9 +676,9 @@ func TestCreateTXTRecord_AutoQuotes(t *testing.T) {
 
 func TestListTXTRecords_DisabledAsBool(t *testing.T) {
 	handler := func(w http.ResponseWriter, r *http.Request) {
-		// Simulate API returning disabled as bool (as real PowerAdmin does)
+		// Simulate v2 4.3.0+ wrapped response with disabled as bool
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"success":true,"data":[{"id":10,"name":"_acme.example.com","type":"TXT","content":"\"test\"","ttl":120,"priority":0,"disabled":false}],"message":"ok"}`))
+		_, _ = w.Write([]byte(`{"success":true,"data":{"records":[{"id":10,"name":"_acme.example.com","type":"TXT","content":"\"test\"","ttl":120,"priority":0,"disabled":false}]},"message":"ok"}`))
 	}
 
 	_, client := setupTestServerWithVersion(t, handler, "v2")
@@ -651,6 +696,7 @@ func TestListTXTRecords_DisabledAsBool(t *testing.T) {
 
 func TestListTXTRecords_DisabledAsInt(t *testing.T) {
 	handler := func(w http.ResponseWriter, r *http.Request) {
+		// Simulate v2 legacy flat response with disabled as int
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`{"success":true,"data":[{"id":10,"name":"_acme.example.com","type":"TXT","content":"\"test\"","ttl":120,"priority":0,"disabled":1}],"message":"ok"}`))
 	}

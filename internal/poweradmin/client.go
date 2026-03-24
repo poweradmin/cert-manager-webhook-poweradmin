@@ -33,6 +33,11 @@ type v2ZonesData struct {
 	Zones []Zone `json:"zones"`
 }
 
+// v2RecordsData wraps the v2 records list response where data is {"records": [...]}.
+type v2RecordsData struct {
+	Records []Record `json:"records"`
+}
+
 // v2RecordData wraps the v2 create-record response where data is {"record": {...}}.
 type v2RecordData struct {
 	Record Record `json:"record"`
@@ -151,10 +156,21 @@ func (c *client) ListTXTRecords(ctx context.Context, zoneID int) ([]Record, erro
 		return nil, fmt.Errorf("failed to parse records response: %w", err)
 	}
 
-	// Both v1 and v2: data is [...]
 	var records []Record
-	if err := json.Unmarshal(resp.Data, &records); err != nil {
-		return nil, fmt.Errorf("failed to parse records data: %w", err)
+	if c.apiVersion == "v2" {
+		// V2 4.3.0+: data is {"records": [...]}
+		// V2 4.2.x:  data is [...]
+		var wrapper v2RecordsData
+		if err := json.Unmarshal(resp.Data, &wrapper); err == nil && wrapper.Records != nil {
+			records = wrapper.Records
+		} else if err := json.Unmarshal(resp.Data, &records); err != nil {
+			return nil, fmt.Errorf("failed to parse v2 records data: %w", err)
+		}
+	} else {
+		// V1: data is [...]
+		if err := json.Unmarshal(resp.Data, &records); err != nil {
+			return nil, fmt.Errorf("failed to parse v1 records data: %w", err)
+		}
 	}
 	return records, nil
 }
