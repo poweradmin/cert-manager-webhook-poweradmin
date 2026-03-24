@@ -8,6 +8,13 @@
 
 A [cert-manager](https://cert-manager.io/) webhook for [PowerAdmin](https://www.poweradmin.org/) DNS provider, enabling DNS-01 ACME challenges for automated certificate issuance (e.g., Let's Encrypt) in Kubernetes.
 
+## Compatibility
+
+| Webhook Version | Poweradmin Version                    | cert-manager | Kubernetes |
+|-----------------|---------------------------------------|--------------|------------|
+| 0.2.0           | 4.3.0+ (wrapped API responses)        | >= 1.0       | >= 1.25    |
+| 0.1.x           | 4.1.0+ (v1 API), 4.2.0+ (v2 API)     | >= 1.0       | >= 1.25    |
+
 ## Prerequisites
 
 - Kubernetes 1.25+
