@@ -27,6 +27,9 @@ lint:
 fmt:
 	golangci-lint run --fix ./...
 
+.PHONY: check
+check: lint test-unit ## Run lint and unit tests (same checks as CI)
+
 .PHONY: build-local
 build-local:
 	CGO_ENABLED=0 $(GO) build -o webhook -ldflags '-w -extldflags "-static"' .
