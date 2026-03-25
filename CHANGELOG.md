@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.1.6](https://github.com/poweradmin/cert-manager-webhook-poweradmin/compare/v0.1.5...v0.1.6) (2026-03-25)
+
+
+### Bug Fixes
+
+* handle wrapped v2 records response for PowerAdmin 4.3.0+ compatibility ([87f8d34](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/87f8d343baf924e4f8c071269205b14b2ffa420c))
+* upgrade grpc-go to v1.79.3 (CVE-2026-33186 authorization bypass) ([abe2fbe](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/abe2fbe45c4ec7e213b2c0edbb52ff66c6e8b026))
+
+
+### Documentation
+
+* add PowerAdmin version compatibility table ([3645c84](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/3645c84545a0be29d01238917e8ff4aff33f858b))
+
 ## [0.1.5](https://github.com/poweradmin/cert-manager-webhook-poweradmin/compare/v0.1.4...v0.1.5) (2026-03-13)
 
 
