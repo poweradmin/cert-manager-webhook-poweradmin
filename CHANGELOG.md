@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.7](https://github.com/poweradmin/cert-manager-webhook-poweradmin/compare/v0.1.6...v0.1.7) (2026-03-25)
+
+
+### Bug Fixes
+
+* extract TXT string constant to satisfy goconst linter ([4c8caf2](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/4c8caf2f21f8f39db16b6e26c2c401edbc2dc94e))
+
+
+### Documentation
+
+* fix version numbers in compatibility table ([32b0147](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/32b0147d8802b4cff91ea5ada6c9b97b25566a40))
+
 ## [0.1.6](https://github.com/poweradmin/cert-manager-webhook-poweradmin/compare/v0.1.5...v0.1.6) (2026-03-25)
 
 
