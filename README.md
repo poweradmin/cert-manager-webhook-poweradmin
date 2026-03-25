@@ -10,10 +10,10 @@ A [cert-manager](https://cert-manager.io/) webhook for [PowerAdmin](https://www.
 
 ## Compatibility
 
-| Webhook Version | Poweradmin Version                    | cert-manager | Kubernetes |
-|-----------------|---------------------------------------|--------------|------------|
-| 0.2.0           | 4.3.0+ (wrapped API responses)        | >= 1.0       | >= 1.25    |
-| 0.1.x           | 4.1.0+ (v1 API), 4.2.0+ (v2 API)     | >= 1.0       | >= 1.25    |
+| Webhook Version | Poweradmin Version                          | cert-manager | Kubernetes |
+|-----------------|---------------------------------------------|--------------|------------|
+| 0.1.6+          | 4.1.0+ (v1 API), 4.2.0+ (v2 API), 4.3.0+  | >= 1.0       | >= 1.25    |
+| 0.1.0–0.1.5     | 4.1.0+ (v1 API), 4.2.0+ (v2 API)           | >= 1.0       | >= 1.25    |
 
 ## Prerequisites
 
