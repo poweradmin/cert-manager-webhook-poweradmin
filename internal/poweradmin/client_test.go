@@ -8,7 +8,10 @@ import (
 	"testing"
 )
 
-const testV2RecordsPath = "/api/v2/zones/1/records"
+const (
+	testV2RecordsPath = "/api/v2/zones/1/records"
+	testRecordTypeTXT = "TXT"
+)
 
 func setupTestServerWithVersion(t *testing.T, handler http.HandlerFunc, apiVersion string) (*httptest.Server, DNSProvider) {
 	t.Helper()
@@ -221,7 +224,7 @@ func TestListTXTRecords(t *testing.T) {
 	// Test v2 wrapped response (4.3.0+)
 	t.Run("v2 wrapped", func(t *testing.T) {
 		handler := func(w http.ResponseWriter, r *http.Request) {
-			if r.URL.Path == testV2RecordsPath && r.URL.Query().Get("type") == "TXT" {
+			if r.URL.Path == testV2RecordsPath && r.URL.Query().Get("type") == testRecordTypeTXT {
 				writeV2RecordsResponse(w, records)
 				return
 			}
@@ -241,7 +244,7 @@ func TestListTXTRecords(t *testing.T) {
 	// Test v2 legacy flat response (pre-4.3.0)
 	t.Run("v2 legacy flat", func(t *testing.T) {
 		handler := func(w http.ResponseWriter, r *http.Request) {
-			if r.URL.Path == testV2RecordsPath && r.URL.Query().Get("type") == "TXT" {
+			if r.URL.Path == testV2RecordsPath && r.URL.Query().Get("type") == testRecordTypeTXT {
 				writeV2LegacyRecordsResponse(w, records)
 				return
 			}
