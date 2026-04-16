@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.8](https://github.com/poweradmin/cert-manager-webhook-poweradmin/compare/v0.1.7...v0.1.8) (2026-04-16)
+
+
+### Bug Fixes
+
+* bump Go to 1.26.2 to resolve stdlib CVEs ([0a67306](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/0a6730638e3dd996a7721d2a0915f1001190b1b3))
+* bump Go to 1.26.2 to resolve stdlib CVEs ([b7de191](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/b7de191f2f52884b07a9ad474a5cc2c1e396f89a))
+
 ## [0.1.7](https://github.com/poweradmin/cert-manager-webhook-poweradmin/compare/v0.1.6...v0.1.7) (2026-03-25)
 
 
