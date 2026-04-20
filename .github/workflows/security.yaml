@@ -16,12 +16,14 @@ env:
 
 permissions:
   contents: read
-  security-events: write
 
 jobs:
   trivy-fs:
     name: Filesystem Scan
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
 
     steps:
       - name: Checkout
@@ -46,6 +48,9 @@ jobs:
   trivy-image:
     name: Image Scan
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
 
     steps:
       - name: Checkout
@@ -98,6 +103,8 @@ jobs:
   sbom:
     name: SBOM
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout
