@@ -16,12 +16,14 @@ env:
 
 permissions:
   contents: read
-  security-events: write
 
 jobs:
   analyze:
     name: Analyze (Go)
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
 
     steps:
       - name: Checkout
