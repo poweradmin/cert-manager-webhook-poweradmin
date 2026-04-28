@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.9](https://github.com/poweradmin/cert-manager-webhook-poweradmin/compare/v0.1.8...v0.1.9) (2026-04-28)
+
+
+### Bug Fixes
+
+* drop deprecated cosign --output-certificate from signs config ([#33](https://github.com/poweradmin/cert-manager-webhook-poweradmin/issues/33)) ([b450367](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/b45036757669c8ac807ab3975b2467353318e532))
+
 ## [0.1.8](https://github.com/poweradmin/cert-manager-webhook-poweradmin/compare/v0.1.7...v0.1.8) (2026-04-16)
 
 
