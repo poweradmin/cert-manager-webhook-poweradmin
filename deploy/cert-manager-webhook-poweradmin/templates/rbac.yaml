@@ -67,7 +67,7 @@ rules:
   - apiGroups:
       - {{ .Values.groupName }}
     resources:
-      - '*'
+      - 'poweradmin'
     verbs:
       - 'create'
 ---
