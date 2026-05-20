@@ -1,0 +1,21 @@
+# Snyk (https://snyk.io) policy file
+version: v1.25.0
+ignore:
+  'go/PermissiveTrustManager':
+    - 'internal/poweradmin/client.go':
+        reason: >-
+          InsecureSkipVerify is gated behind an explicit `insecure` config
+          flag in the webhook's PowerAdmin DNS provider config. It is an
+          intentional opt-in for self-signed or internal PKI deployments,
+          following the same pattern used by lego and the cert-manager
+          example webhook.
+        expires: 2099-01-01T00:00:00.000Z
+  'SNYK-CC-K8S-48':
+    - '*':
+        reason: >-
+          The kube-system RoleBinding to extension-apiserver-authentication-reader
+          is required by every Kubernetes aggregated API server for delegated
+          authentication. This is the standard cert-manager webhook pattern
+          documented by cert-manager and Kubernetes upstream.
+        expires: 2099-01-01T00:00:00.000Z
+patch: {}
