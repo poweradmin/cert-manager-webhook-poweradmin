@@ -20,6 +20,9 @@ service:
 
 podSecurityContext:
   runAsNonRoot: true
+  runAsUser: 65532
+  runAsGroup: 65532
+  fsGroup: 65532
   seccompProfile:
     type: RuntimeDefault
 
@@ -50,7 +53,13 @@ readinessProbe:
   timeoutSeconds: 5
   failureThreshold: 3
 
-resources: {}
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 100m
+    memory: 128Mi
 
 nodeSelector: {}
 
