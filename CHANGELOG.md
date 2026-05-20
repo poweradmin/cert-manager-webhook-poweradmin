@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.10](https://github.com/poweradmin/cert-manager-webhook-poweradmin/compare/v0.1.9...v0.1.10) (2026-05-20)
+
+
+### Bug Fixes
+
+* **helm:** scope domain-solver ClusterRole to poweradmin resource ([0264d32](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/0264d3284156f4194d7cb28e790feab52f9168c5))
+
 ## [0.1.9](https://github.com/poweradmin/cert-manager-webhook-poweradmin/compare/v0.1.8...v0.1.9) (2026-04-28)
 
 
