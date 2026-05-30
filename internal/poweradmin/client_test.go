@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -458,14 +459,31 @@ func TestListTXTRecords_EmptyZone(t *testing.T) {
 
 func TestDeleteRecord_HTTPErrors(t *testing.T) {
 	handler := func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusNotFound)
-		_, _ = w.Write([]byte(`{"error":"not found"}`))
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(`{"success":false,"message":"Failed to delete record"}`))
 	}
 
 	_, client := setupTestServerWithVersion(t, handler, "v2")
 	err := client.DeleteRecord(context.Background(), 1, 999)
 	if err == nil {
-		t.Error("expected error for 404 response on delete")
+		t.Fatal("expected error for 500 response on delete")
+	}
+	if !strings.Contains(err.Error(), "Failed to delete record") {
+		t.Errorf("expected error to surface the API message, got: %v", err)
+	}
+}
+
+// A 404 on delete means the record is already gone; ACME CleanUp must stay
+// idempotent across cert-manager retries, so this is treated as success.
+func TestDeleteRecord_NotFoundIsIdempotent(t *testing.T) {
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`{"success":false,"message":"Record not found in this zone"}`))
+	}
+
+	_, client := setupTestServerWithVersion(t, handler, "v2")
+	if err := client.DeleteRecord(context.Background(), 1, 999); err != nil {
+		t.Errorf("expected nil (idempotent) for 404 on delete, got: %v", err)
 	}
 }
 
