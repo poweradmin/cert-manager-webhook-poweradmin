@@ -28,6 +28,16 @@ type apiResponse struct {
 	Message string          `json:"message"`
 }
 
+// apiErrorf builds an error from a non-success PowerAdmin API response,
+// preferring the structured "message" field over the raw body when present.
+func apiErrorf(op string, status int, body []byte) error {
+	var resp apiResponse
+	if err := json.Unmarshal(body, &resp); err == nil && resp.Message != "" {
+		return fmt.Errorf("%s: PowerAdmin API returned HTTP %d: %s", op, status, resp.Message)
+	}
+	return fmt.Errorf("%s: PowerAdmin API returned HTTP %d: %s", op, status, string(body))
+}
+
 // v2ZonesData wraps the v2 zones response where data is {"zones": [...]}.
 type v2ZonesData struct {
 	Zones []Zone `json:"zones"`
@@ -103,7 +113,7 @@ func (c *client) GetZones(ctx context.Context) ([]Zone, error) {
 		return nil, err
 	}
 	if status != http.StatusOK {
-		return nil, fmt.Errorf("PowerAdmin API returned HTTP %d: %s", status, string(body))
+		return nil, apiErrorf("list zones", status, body)
 	}
 
 	var resp apiResponse
@@ -148,7 +158,7 @@ func (c *client) ListTXTRecords(ctx context.Context, zoneID int) ([]Record, erro
 		return nil, err
 	}
 	if status != http.StatusOK {
-		return nil, fmt.Errorf("PowerAdmin API returned HTTP %d: %s", status, string(body))
+		return nil, apiErrorf("list TXT records", status, body)
 	}
 
 	var resp apiResponse
@@ -196,7 +206,7 @@ func (c *client) CreateTXTRecord(ctx context.Context, zoneID int, name, content 
 		return nil, err
 	}
 	if status != http.StatusCreated && status != http.StatusOK {
-		return nil, fmt.Errorf("PowerAdmin API returned HTTP %d: %s", status, string(body))
+		return nil, apiErrorf("create TXT record", status, body)
 	}
 
 	var resp apiResponse
@@ -237,8 +247,13 @@ func (c *client) DeleteRecord(ctx context.Context, zoneID int, recordID int) err
 	if err != nil {
 		return err
 	}
+	// A missing record means it is already gone; treat as success so ACME
+	// CleanUp stays idempotent across cert-manager retries.
+	if status == http.StatusNotFound {
+		return nil
+	}
 	if status != http.StatusNoContent && status != http.StatusOK {
-		return fmt.Errorf("PowerAdmin API returned HTTP %d: %s", status, string(body))
+		return apiErrorf("delete record", status, body)
 	}
 	return nil
 }
