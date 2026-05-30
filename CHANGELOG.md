@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.11](https://github.com/poweradmin/cert-manager-webhook-poweradmin/compare/v0.1.10...v0.1.11) (2026-05-30)
+
+
+### Bug Fixes
+
+* idempotent record delete on 404 and surface API error messages ([#52](https://github.com/poweradmin/cert-manager-webhook-poweradmin/issues/52)) ([077bd09](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/077bd0983fadf989ae31f254938bca80e04074af))
+
 ## [0.1.10](https://github.com/poweradmin/cert-manager-webhook-poweradmin/compare/v0.1.9...v0.1.10) (2026-05-20)
 
 
