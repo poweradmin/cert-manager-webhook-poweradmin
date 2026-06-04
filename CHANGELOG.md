@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.12](https://github.com/poweradmin/cert-manager-webhook-poweradmin/compare/v0.1.11...v0.1.12) (2026-06-04)
+
+
+### Bug Fixes
+
+* bump go directive to 1.26.4 to resolve stdlib vulnerabilities ([#58](https://github.com/poweradmin/cert-manager-webhook-poweradmin/issues/58)) ([413bf29](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/413bf29c7bce24fcd2a267dc8f9c59a53e8f32f2))
+* pin alpine base image by digest to satisfy Scorecard pinned-dependencies ([#60](https://github.com/poweradmin/cert-manager-webhook-poweradmin/issues/60)) ([af626c2](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/af626c2013e5f3ea90222f13c31c3a0c4c67b0fd))
+
 ## [0.1.11](https://github.com/poweradmin/cert-manager-webhook-poweradmin/compare/v0.1.10...v0.1.11) (2026-05-30)
 
 
