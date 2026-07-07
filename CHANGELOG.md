@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.2.0](https://github.com/poweradmin/cert-manager-webhook-poweradmin/compare/v0.1.12...v0.2.0) (2026-07-07)
+
+
+### ⚠ BREAKING CHANGES
+
+* **helm:** scope secret-reading RBAC to cert-manager namespace by default
+
+### Bug Fixes
+
+* **client:** preserve default transport settings in insecure mode ([4af6882](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/4af6882cf8144100a3599aa0a0c5fa40a3de3efb))
+* **client:** support string record IDs from PowerDNS API backend ([a22b045](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/a22b0450fac680ffaa87cbec65dc99dba92f40ec))
+* **client:** trim only one surrounding quote pair from TXT content ([5c7d08e](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/5c7d08ebf8315c67262bbd11396334bb4dd9a3ee))
+* **helm:** default image tag to release tag instead of latest ([5394360](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/539436047a00ae6b6653de0dbc05daa991633180))
+* **helm:** scope secret-reading RBAC to cert-manager namespace by default ([bad2919](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/bad2919c6791df1da7e98fe89aa37eda354b6701))
+* **scripts:** handle wrapped v2 records response in integration test ([d949476](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/d949476c3741f9c1d642c9d272badfc314ec9b13))
+* **solver:** ignore disabled records in Present idempotency check ([7bc0590](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/7bc0590c9a69fd447230abc8cbd30b481a1d73fd))
+* **solver:** match zone and record names case-insensitively ([8e31f50](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/8e31f505dc25edfc116d57d463462194aaf6c00c))
+* **solver:** require exact ResolvedZone match, include full FQDN in fallback walk ([5f0681f](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/5f0681fe69e825c433bc61dbf26249c0c90f8b97))
+* **solver:** treat missing zone as success in CleanUp ([13c592c](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/13c592c2fc0a653dc8538e6fe0040471dd839ece))
+
+
+### Refactoring
+
+* **solver:** inject API client factory and test Present/CleanUp end-to-end ([e0cae04](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/e0cae041662a6bb8229695d54ea99421b0f8bca8))
+
 ## [0.1.12](https://github.com/poweradmin/cert-manager-webhook-poweradmin/compare/v0.1.11...v0.1.12) (2026-06-04)
 
 
