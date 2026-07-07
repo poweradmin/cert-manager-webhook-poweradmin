@@ -183,16 +183,21 @@ func (s *PowerAdminSolver) findZone(ctx context.Context, client poweradmin.DNSPr
 		zoneMap[zones[i].Name] = &zones[i]
 	}
 
-	// Try ch.ResolvedZone first (provided by cert-manager).
-	zoneName := strings.TrimSuffix(ch.ResolvedZone, ".")
-	if zone, ok := zoneMap[zoneName]; ok {
-		return zone, nil
+	// cert-manager's ResolvedZone is the authoritative zone cut for the FQDN.
+	// A TXT record created in any other (parent) zone would be invisible to
+	// ACME validators, so when it is set, require an exact match.
+	if zoneName := strings.TrimSuffix(ch.ResolvedZone, "."); zoneName != "" {
+		if zone, ok := zoneMap[zoneName]; ok {
+			return zone, nil
+		}
+		return nil, fmt.Errorf("authoritative zone %q for %q is not managed by this PowerAdmin instance: %w",
+			zoneName, ch.ResolvedFQDN, errZoneNotFound)
 	}
 
-	// Fallback: walk up domain labels of ch.ResolvedFQDN.
+	// No ResolvedZone: walk from the full FQDN up to the most specific zone.
 	fqdn := strings.TrimSuffix(ch.ResolvedFQDN, ".")
 	parts := strings.Split(fqdn, ".")
-	for i := 1; i < len(parts); i++ {
+	for i := 0; i < len(parts); i++ {
 		candidate := strings.Join(parts[i:], ".")
 		if zone, ok := zoneMap[candidate]; ok {
 			return zone, nil

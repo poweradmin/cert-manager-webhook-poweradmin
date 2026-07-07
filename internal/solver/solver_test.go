@@ -308,6 +308,7 @@ func TestFindZone(t *testing.T) {
 	mock := newMockDNSProvider([]poweradmin.Zone{
 		{ID: 1, Name: "example.com"},
 		{ID: 2, Name: "other.com"},
+		{ID: 3, Name: "challenges.example.com"},
 	})
 
 	tests := []struct {
@@ -324,10 +325,25 @@ func TestFindZone(t *testing.T) {
 			wantZoneID:   1,
 		},
 		{
-			name:         "fallback via FQDN label walking",
-			resolvedZone: "nonexistent.com.",
+			// The authoritative zone cut is not in PowerAdmin; creating the
+			// record in a parent zone would be invisible to validators, so
+			// this must fail instead of falling back.
+			name:         "ResolvedZone not managed here",
+			resolvedZone: "sub.example.com.",
+			resolvedFQDN: "_acme-challenge.sub.example.com.",
+			wantErr:      true,
+		},
+		{
+			name:         "empty ResolvedZone falls back to label walking",
+			resolvedZone: "",
 			resolvedFQDN: "_acme-challenge.sub.example.com.",
 			wantZoneID:   1,
+		},
+		{
+			name:         "empty ResolvedZone matches FQDN itself as zone",
+			resolvedZone: "",
+			resolvedFQDN: "challenges.example.com.",
+			wantZoneID:   3,
 		},
 		{
 			name:         "zone not found",
