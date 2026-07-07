@@ -2,6 +2,7 @@ package solver
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -14,6 +15,10 @@ import (
 )
 
 const defaultTTL = 120
+
+// errZoneNotFound marks zone-resolution failures so CleanUp can treat a
+// missing zone as already-cleaned-up instead of retrying forever.
+var errZoneNotFound = errors.New("zone not found in PowerAdmin")
 
 // PowerAdminSolver implements the cert-manager webhook.Solver interface
 // for PowerAdmin DNS provider.
@@ -126,6 +131,11 @@ func (s *PowerAdminSolver) Present(ch *v1alpha1.ChallengeRequest) error {
 func (s *PowerAdminSolver) CleanUp(ch *v1alpha1.ChallengeRequest) error {
 	cc, err := s.resolveChallenge(ch)
 	if err != nil {
+		// If the zone no longer exists in PowerAdmin, the record cannot
+		// exist either; report success so the challenge can finish.
+		if errors.Is(err, errZoneNotFound) {
+			return nil
+		}
 		return err
 	}
 
@@ -189,5 +199,5 @@ func (s *PowerAdminSolver) findZone(ctx context.Context, client poweradmin.DNSPr
 		}
 	}
 
-	return nil, fmt.Errorf("could not find zone for domain %q in PowerAdmin", fqdn)
+	return nil, fmt.Errorf("could not find zone for domain %q: %w", fqdn, errZoneNotFound)
 }

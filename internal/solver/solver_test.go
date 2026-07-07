@@ -2,7 +2,10 @@ package solver
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"strconv"
 	"testing"
 
@@ -528,6 +531,38 @@ func TestCleanUp_HandlesUnquotedAPIResponse(t *testing.T) {
 	}
 	if mock.deleteRecordCalls[0].RecordID != "200" {
 		t.Errorf("deleted record ID = %s, want 200", mock.deleteRecordCalls[0].RecordID)
+	}
+}
+
+// A zone that vanished from PowerAdmin must not wedge CleanUp: the record
+// cannot exist, so CleanUp reports success while Present still errors.
+func TestZoneGone_CleanUpSucceedsPresentFails(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"success":true,"data":{"zones":[]},"message":"ok"}`))
+	}))
+	t.Cleanup(server.Close)
+
+	s := newSolverWithMock(nil)
+	ch := &v1alpha1.ChallengeRequest{
+		ResourceNamespace: "default",
+		ResolvedZone:      "example.com.",
+		ResolvedFQDN:      testACMEFQDN + ".",
+		Key:               "token",
+		Config: &extapi.JSON{Raw: []byte(
+			`{"serverURL":"` + server.URL + `","apiKeySecretRef":{"name":"poweradmin-api-key","key":"api-key"}}`,
+		)},
+	}
+
+	if err := s.CleanUp(ch); err != nil {
+		t.Errorf("CleanUp() with missing zone = %v, want nil", err)
+	}
+	err := s.Present(ch)
+	if err == nil {
+		t.Fatal("Present() with missing zone should error")
+	}
+	if !errors.Is(err, errZoneNotFound) {
+		t.Errorf("Present() error = %v, want errZoneNotFound", err)
 	}
 }
 
