@@ -19,7 +19,8 @@ rbac:
 
 image:
   repository: ghcr.io/poweradmin/cert-manager-webhook-poweradmin
-  tag: latest
+  # Defaults to the chart appVersion prefixed with "v" (the release image tag).
+  tag: ""
   pullPolicy: IfNotPresent
 
 nameOverride: ""
