@@ -2,6 +2,7 @@ package solver
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -15,15 +16,21 @@ import (
 
 const defaultTTL = 120
 
+// errZoneNotFound marks zone-resolution failures so CleanUp can treat a
+// missing zone as already-cleaned-up instead of retrying forever.
+var errZoneNotFound = errors.New("zone not found in PowerAdmin")
+
 // PowerAdminSolver implements the cert-manager webhook.Solver interface
 // for PowerAdmin DNS provider.
 type PowerAdminSolver struct {
 	kubeClient kubernetes.Interface
+	// newClient creates the PowerAdmin API client; overridable in tests.
+	newClient func(serverURL, apiKey, apiVersion string, insecure bool) (poweradmin.DNSProvider, error)
 }
 
 // New creates a new PowerAdminSolver.
 func New() *PowerAdminSolver {
-	return &PowerAdminSolver{}
+	return &PowerAdminSolver{newClient: poweradmin.NewClient}
 }
 
 func (s *PowerAdminSolver) Name() string {
@@ -66,7 +73,11 @@ func (s *PowerAdminSolver) resolveChallenge(ch *v1alpha1.ChallengeRequest) (*cha
 		return nil, err
 	}
 
-	client, err := poweradmin.NewClient(cfg.ServerURL, apiKey, cfg.APIVersion, cfg.Insecure)
+	newClient := s.newClient
+	if newClient == nil {
+		newClient = poweradmin.NewClient
+	}
+	client, err := newClient(cfg.ServerURL, apiKey, cfg.APIVersion, cfg.Insecure)
 	if err != nil {
 		return nil, err
 	}
@@ -104,8 +115,13 @@ func (s *PowerAdminSolver) Present(ch *v1alpha1.ChallengeRequest) error {
 
 	// Check idempotency: if a matching record already exists, skip creation.
 	// Normalize TXT content for comparison since the API may return quoted or unquoted values.
+	// Disabled records are not served by DNS and cannot satisfy the challenge,
+	// so they don't count as existing.
 	for _, r := range cc.records {
-		if r.Name == cc.fqdn && poweradmin.NormalizeTXTContent(r.Content) == poweradmin.NormalizeTXTContent(cc.txtKey) {
+		if r.Disabled {
+			continue
+		}
+		if strings.EqualFold(r.Name, cc.fqdn) && poweradmin.NormalizeTXTContent(r.Content) == poweradmin.NormalizeTXTContent(cc.txtKey) {
 			return nil
 		}
 	}
@@ -126,13 +142,18 @@ func (s *PowerAdminSolver) Present(ch *v1alpha1.ChallengeRequest) error {
 func (s *PowerAdminSolver) CleanUp(ch *v1alpha1.ChallengeRequest) error {
 	cc, err := s.resolveChallenge(ch)
 	if err != nil {
+		// If the zone no longer exists in PowerAdmin, the record cannot
+		// exist either; report success so the challenge can finish.
+		if errors.Is(err, errZoneNotFound) {
+			return nil
+		}
 		return err
 	}
 
 	for _, r := range cc.records {
-		if r.Name == cc.fqdn && poweradmin.NormalizeTXTContent(r.Content) == poweradmin.NormalizeTXTContent(cc.txtKey) {
+		if strings.EqualFold(r.Name, cc.fqdn) && poweradmin.NormalizeTXTContent(r.Content) == poweradmin.NormalizeTXTContent(cc.txtKey) {
 			if err := cc.client.DeleteRecord(context.Background(), cc.zone.ID, r.ID); err != nil {
-				return fmt.Errorf("failed to delete TXT record %d for %q in zone %q: %w", r.ID, cc.fqdn, cc.zone.Name, err)
+				return fmt.Errorf("failed to delete TXT record %q for %q in zone %q: %w", r.ID, cc.fqdn, cc.zone.Name, err)
 			}
 		}
 	}
@@ -168,26 +189,32 @@ func (s *PowerAdminSolver) findZone(ctx context.Context, client poweradmin.DNSPr
 		return nil, fmt.Errorf("failed to list zones from PowerAdmin: %w", err)
 	}
 
+	// DNS names are case-insensitive; index zones lowercased.
 	zoneMap := make(map[string]*poweradmin.Zone, len(zones))
 	for i := range zones {
-		zoneMap[zones[i].Name] = &zones[i]
+		zoneMap[strings.ToLower(zones[i].Name)] = &zones[i]
 	}
 
-	// Try ch.ResolvedZone first (provided by cert-manager).
-	zoneName := strings.TrimSuffix(ch.ResolvedZone, ".")
-	if zone, ok := zoneMap[zoneName]; ok {
-		return zone, nil
+	// cert-manager's ResolvedZone is the authoritative zone cut for the FQDN.
+	// A TXT record created in any other (parent) zone would be invisible to
+	// ACME validators, so when it is set, require an exact match.
+	if zoneName := strings.ToLower(strings.TrimSuffix(ch.ResolvedZone, ".")); zoneName != "" {
+		if zone, ok := zoneMap[zoneName]; ok {
+			return zone, nil
+		}
+		return nil, fmt.Errorf("authoritative zone %q for %q is not managed by this PowerAdmin instance: %w",
+			zoneName, ch.ResolvedFQDN, errZoneNotFound)
 	}
 
-	// Fallback: walk up domain labels of ch.ResolvedFQDN.
-	fqdn := strings.TrimSuffix(ch.ResolvedFQDN, ".")
+	// No ResolvedZone: walk from the full FQDN up to the most specific zone.
+	fqdn := strings.ToLower(strings.TrimSuffix(ch.ResolvedFQDN, "."))
 	parts := strings.Split(fqdn, ".")
-	for i := 1; i < len(parts); i++ {
+	for i := 0; i < len(parts); i++ {
 		candidate := strings.Join(parts[i:], ".")
 		if zone, ok := zoneMap[candidate]; ok {
 			return zone, nil
 		}
 	}
 
-	return nil, fmt.Errorf("could not find zone for domain %q in PowerAdmin", fqdn)
+	return nil, fmt.Errorf("could not find zone for domain %q: %w", fqdn, errZoneNotFound)
 }

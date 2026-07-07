@@ -6,9 +6,21 @@ certManager:
   namespace: cert-manager
   serviceAccountName: cert-manager
 
+rbac:
+  secretReader:
+    # Namespaces (besides certManager.namespace, which covers ClusterIssuers)
+    # where the webhook may read API-key Secrets. Add entries here when
+    # namespaced Issuers reference Secrets in other namespaces.
+    additionalNamespaces: []
+    # Optionally restrict which Secrets can be read, by name.
+    secretNames: []
+    # Restore the pre-0.2 cluster-wide secret access (not recommended).
+    clusterScope: false
+
 image:
   repository: ghcr.io/poweradmin/cert-manager-webhook-poweradmin
-  tag: latest
+  # Defaults to the chart appVersion prefixed with "v" (the release image tag).
+  tag: ""
   pullPolicy: IfNotPresent
 
 nameOverride: ""

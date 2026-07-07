@@ -90,7 +90,11 @@ subjects:
     name: {{ .Values.certManager.serviceAccountName }}
     namespace: {{ .Values.certManager.namespace }}
 ---
-# Grant the webhook permission to read secrets (for API keys)
+# Grant the webhook permission to read API-key Secrets.
+# By default this is scoped to the cert-manager namespace (where ClusterIssuer
+# secrets live) plus any namespaces listed in rbac.secretReader.additionalNamespaces.
+# Set rbac.secretReader.clusterScope=true to restore cluster-wide access.
+{{- if .Values.rbac.secretReader.clusterScope }}
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -107,6 +111,10 @@ rules:
       - "secrets"
     verbs:
       - "get"
+    {{- with .Values.rbac.secretReader.secretNames }}
+    resourceNames:
+{{ toYaml . | indent 6 }}
+    {{- end }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -126,3 +134,49 @@ subjects:
     kind: ServiceAccount
     name: {{ include "cert-manager-webhook-poweradmin.fullname" . }}
     namespace: {{ .Release.Namespace }}
+{{- else }}
+{{- range $ns := uniq (concat (list $.Values.certManager.namespace) $.Values.rbac.secretReader.additionalNamespaces) }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "cert-manager-webhook-poweradmin.fullname" $ }}:secret-reader
+  namespace: {{ $ns | quote }}
+  labels:
+    app: {{ include "cert-manager-webhook-poweradmin.name" $ }}
+    chart: {{ include "cert-manager-webhook-poweradmin.chart" $ }}
+    release: {{ $.Release.Name }}
+    heritage: {{ $.Release.Service }}
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - "secrets"
+    verbs:
+      - "get"
+    {{- with $.Values.rbac.secretReader.secretNames }}
+    resourceNames:
+{{ toYaml . | indent 6 }}
+    {{- end }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "cert-manager-webhook-poweradmin.fullname" $ }}:secret-reader
+  namespace: {{ $ns | quote }}
+  labels:
+    app: {{ include "cert-manager-webhook-poweradmin.name" $ }}
+    chart: {{ include "cert-manager-webhook-poweradmin.chart" $ }}
+    release: {{ $.Release.Name }}
+    heritage: {{ $.Release.Service }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "cert-manager-webhook-poweradmin.fullname" $ }}:secret-reader
+subjects:
+  - apiGroup: ""
+    kind: ServiceAccount
+    name: {{ include "cert-manager-webhook-poweradmin.fullname" $ }}
+    namespace: {{ $.Release.Namespace }}
+---
+{{- end }}
+{{- end }}

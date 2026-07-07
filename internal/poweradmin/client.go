@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 )
@@ -18,7 +19,7 @@ type DNSProvider interface {
 	GetZoneByName(ctx context.Context, name string) (*Zone, error)
 	ListTXTRecords(ctx context.Context, zoneID int) ([]Record, error)
 	CreateTXTRecord(ctx context.Context, zoneID int, name, content string, ttl int) (*Record, error)
-	DeleteRecord(ctx context.Context, zoneID int, recordID int) error
+	DeleteRecord(ctx context.Context, zoneID int, recordID RecordID) error
 }
 
 // apiResponse is the standard wrapper for all PowerAdmin API responses.
@@ -55,7 +56,7 @@ type v2RecordData struct {
 
 // v1RecordData maps the v1 create-record response where the ID field is "record_id".
 type v1RecordData struct {
-	RecordID int      `json:"record_id"`
+	RecordID RecordID `json:"record_id"`
 	Name     string   `json:"name"`
 	Type     string   `json:"type"`
 	Content  string   `json:"content"`
@@ -241,8 +242,9 @@ func (c *client) CreateTXTRecord(ctx context.Context, zoneID int, name, content 
 	return &record, nil
 }
 
-func (c *client) DeleteRecord(ctx context.Context, zoneID int, recordID int) error {
-	path := fmt.Sprintf("/zones/%d/records/%d", zoneID, recordID)
+func (c *client) DeleteRecord(ctx context.Context, zoneID int, recordID RecordID) error {
+	// PowerDNS API backend IDs are encoded strings; escape them for the path.
+	path := fmt.Sprintf("/zones/%d/records/%s", zoneID, url.PathEscape(string(recordID)))
 	body, status, err := c.doRequest(ctx, http.MethodDelete, path, nil)
 	if err != nil {
 		return err
@@ -258,17 +260,25 @@ func (c *client) DeleteRecord(ctx context.Context, zoneID int, recordID int) err
 	return nil
 }
 
+// trimOneQuotePair strips exactly one pair of surrounding double quotes.
+// Unlike strings.Trim, it never eats quotes that are part of the content.
+func trimOneQuotePair(content string) string {
+	if len(content) >= 2 && content[0] == '"' && content[len(content)-1] == '"' {
+		return content[1 : len(content)-1]
+	}
+	return content
+}
+
 // EnsureTXTQuoted ensures TXT record content is enclosed in double quotes.
-// Strips any existing surrounding quotes first to avoid double-quoting.
+// Strips one pair of existing surrounding quotes first to avoid double-quoting.
 func EnsureTXTQuoted(content string) string {
-	content = strings.Trim(content, "\"")
-	return fmt.Sprintf("\"%s\"", content)
+	return `"` + trimOneQuotePair(content) + `"`
 }
 
 // NormalizeTXTContent strips surrounding quotes from TXT content for comparison.
 // The API may return quoted or unquoted values depending on version.
 func NormalizeTXTContent(content string) string {
-	return strings.Trim(content, "\"")
+	return trimOneQuotePair(content)
 }
 
 // NewClient creates a DNSProvider for the given API version.
@@ -286,9 +296,11 @@ func NewClient(serverURL, apiKey, apiVersion string, insecure bool) (DNSProvider
 
 	httpClient := &http.Client{Timeout: 30 * time.Second}
 	if insecure {
-		httpClient.Transport = &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, //nolint:gosec
-		}
+		// Clone the default transport so proxy settings, timeouts, and
+		// HTTP/2 support are preserved; only skip certificate verification.
+		transport := http.DefaultTransport.(*http.Transport).Clone()
+		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true} //nolint:gosec
+		httpClient.Transport = transport
 	}
 
 	version := apiVersion

@@ -103,12 +103,13 @@ else
 fi
 
 # 4. Verify record exists
+# Records may be wrapped ({"records": [...]}, PowerAdmin 4.3.0+ v2) or flat ([...], v1 and older v2).
 echo "--- Verify TXT record exists ---"
 RECORD_ID=$(curl -s \
   -H "X-API-Key: ${API_KEY}" \
   "${POWERADMIN_URL}/api/${API_VERSION}/zones/${ZONE_ID}/records?type=TXT" | \
   jq -r --arg name "$RECORD_NAME" --arg value "$RECORD_VALUE" \
-    '.data[] | select(.name == $name and (.content | gsub("^\"|\"$"; "") == $value)) | .id // empty' | head -1)
+    '(.data.records? // .data)[] | select(.name == $name and (.content | gsub("^\"|\"$"; "") == $value)) | .id // empty' | head -1)
 
 if [ -n "$RECORD_ID" ]; then
   pass "TXT record verified (ID ${RECORD_ID})"
@@ -137,7 +138,7 @@ ALL_RECORD_IDS=$(curl -s \
   -H "X-API-Key: ${API_KEY}" \
   "${POWERADMIN_URL}/api/${API_VERSION}/zones/${ZONE_ID}/records?type=TXT" | \
   jq -r --arg name "$RECORD_NAME" --arg value "$RECORD_VALUE" \
-    '.data[] | select(.name == $name and (.content | gsub("^\"|\"$"; "") == $value)) | .id')
+    '(.data.records? // .data)[] | select(.name == $name and (.content | gsub("^\"|\"$"; "") == $value)) | .id')
 
 DELETE_OK=true
 for rid in $ALL_RECORD_IDS; do
@@ -165,7 +166,7 @@ REMAINING=$(curl -s \
   -H "X-API-Key: ${API_KEY}" \
   "${POWERADMIN_URL}/api/${API_VERSION}/zones/${ZONE_ID}/records?type=TXT" | \
   jq --arg name "$RECORD_NAME" --arg value "$RECORD_VALUE" \
-    '[.data[] | select(.name == $name and (.content | gsub("^\"|\"$"; "") == $value))] | length')
+    '[(.data.records? // .data)[] | select(.name == $name and (.content | gsub("^\"|\"$"; "") == $value))] | length')
 
 if [ "$REMAINING" = "0" ]; then
   pass "TXT record confirmed deleted"
