@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 )
@@ -18,7 +19,7 @@ type DNSProvider interface {
 	GetZoneByName(ctx context.Context, name string) (*Zone, error)
 	ListTXTRecords(ctx context.Context, zoneID int) ([]Record, error)
 	CreateTXTRecord(ctx context.Context, zoneID int, name, content string, ttl int) (*Record, error)
-	DeleteRecord(ctx context.Context, zoneID int, recordID int) error
+	DeleteRecord(ctx context.Context, zoneID int, recordID RecordID) error
 }
 
 // apiResponse is the standard wrapper for all PowerAdmin API responses.
@@ -55,7 +56,7 @@ type v2RecordData struct {
 
 // v1RecordData maps the v1 create-record response where the ID field is "record_id".
 type v1RecordData struct {
-	RecordID int      `json:"record_id"`
+	RecordID RecordID `json:"record_id"`
 	Name     string   `json:"name"`
 	Type     string   `json:"type"`
 	Content  string   `json:"content"`
@@ -241,8 +242,9 @@ func (c *client) CreateTXTRecord(ctx context.Context, zoneID int, name, content 
 	return &record, nil
 }
 
-func (c *client) DeleteRecord(ctx context.Context, zoneID int, recordID int) error {
-	path := fmt.Sprintf("/zones/%d/records/%d", zoneID, recordID)
+func (c *client) DeleteRecord(ctx context.Context, zoneID int, recordID RecordID) error {
+	// PowerDNS API backend IDs are encoded strings; escape them for the path.
+	path := fmt.Sprintf("/zones/%d/records/%s", zoneID, url.PathEscape(string(recordID)))
 	body, status, err := c.doRequest(ctx, http.MethodDelete, path, nil)
 	if err != nil {
 		return err

@@ -219,7 +219,7 @@ func TestGetZoneByName(t *testing.T) {
 
 func TestListTXTRecords(t *testing.T) {
 	records := []Record{
-		{ID: 10, Name: "_acme-challenge.example.com", Type: "TXT", Content: "\"test-key\"", TTL: 120},
+		{ID: "10", Name: "_acme-challenge.example.com", Type: "TXT", Content: "\"test-key\"", TTL: 120},
 	}
 
 	// Test v2 wrapped response (4.3.0+)
@@ -237,7 +237,7 @@ func TestListTXTRecords(t *testing.T) {
 		if err != nil {
 			t.Fatalf("ListTXTRecords() error = %v", err)
 		}
-		if len(result) != 1 || result[0].ID != 10 {
+		if len(result) != 1 || result[0].ID != "10" {
 			t.Errorf("ListTXTRecords() = %+v, want 1 record with ID=10", result)
 		}
 	})
@@ -257,7 +257,7 @@ func TestListTXTRecords(t *testing.T) {
 		if err != nil {
 			t.Fatalf("ListTXTRecords() error = %v", err)
 		}
-		if len(result) != 1 || result[0].ID != 10 {
+		if len(result) != 1 || result[0].ID != "10" {
 			t.Errorf("ListTXTRecords() = %+v, want 1 record with ID=10", result)
 		}
 	})
@@ -281,7 +281,7 @@ func TestCreateTXTRecord(t *testing.T) {
 			}
 
 			writeV2CreateRecordResponse(w, Record{
-				ID: 20, Name: "_acme-challenge.example.com",
+				ID: "20", Name: "_acme-challenge.example.com",
 				Type: "TXT", Content: "\"test-key\"", TTL: 120,
 			})
 			return
@@ -296,8 +296,8 @@ func TestCreateTXTRecord(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateTXTRecord() error = %v", err)
 	}
-	if record.ID != 20 {
-		t.Errorf("CreateTXTRecord() record.ID = %d, want 20", record.ID)
+	if record.ID != "20" {
+		t.Errorf("CreateTXTRecord() record.ID = %s, want 20", record.ID)
 	}
 }
 
@@ -313,9 +313,56 @@ func TestDeleteRecord(t *testing.T) {
 	_, client := setupTestServerWithVersion(t, handler, "v2")
 	ctx := context.Background()
 
-	err := client.DeleteRecord(ctx, 1, 10)
+	err := client.DeleteRecord(ctx, 1, "10")
 	if err != nil {
 		t.Fatalf("DeleteRecord() error = %v", err)
+	}
+}
+
+// PowerDNS API backend record IDs are encoded strings; they must be
+// path-escaped in the delete URL.
+func TestDeleteRecord_StringID(t *testing.T) {
+	var receivedPath string
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		receivedPath = r.URL.EscapedPath()
+		w.WriteHeader(http.StatusNoContent)
+	}
+
+	_, client := setupTestServerWithVersion(t, handler, "v2")
+	err := client.DeleteRecord(context.Background(), 1, "abc/def=123")
+	if err != nil {
+		t.Fatalf("DeleteRecord() error = %v", err)
+	}
+	want := "/api/v2/zones/1/records/abc%2Fdef=123"
+	if receivedPath != want {
+		t.Errorf("DeleteRecord() path = %s, want %s", receivedPath, want)
+	}
+}
+
+func TestRecordID_UnmarshalJSON(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		want    RecordID
+		wantErr bool
+	}{
+		{"number", "42", "42", false},
+		{"numeric string", `"42"`, "42", false},
+		{"encoded string", `"ZXhhbXBsZS5jb20vVFhU"`, "ZXhhbXBsZS5jb20vVFhU", false},
+		{"object", `{}`, "", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var id RecordID
+			err := id.UnmarshalJSON([]byte(tt.input))
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("UnmarshalJSON(%s) error = %v, wantErr %v", tt.input, err, tt.wantErr)
+			}
+			if !tt.wantErr && id != tt.want {
+				t.Errorf("UnmarshalJSON(%s) = %s, want %s", tt.input, id, tt.want)
+			}
+		})
 	}
 }
 
@@ -331,7 +378,7 @@ func TestV1Paths(t *testing.T) {
 		case r.URL.Path == "/api/v1/zones/1/records" && r.Method == http.MethodGet:
 			writeV1RecordsResponse(w, []Record{})
 		case r.URL.Path == "/api/v1/zones/1/records" && r.Method == http.MethodPost:
-			writeV1CreateRecordResponse(w, Record{ID: 1})
+			writeV1CreateRecordResponse(w, Record{ID: "1"})
 		case r.URL.Path == "/api/v1/zones/1/records/1" && r.Method == http.MethodDelete:
 			w.WriteHeader(http.StatusNoContent)
 		default:
@@ -359,11 +406,11 @@ func TestV1Paths(t *testing.T) {
 	if err != nil {
 		t.Fatalf("V1 CreateTXTRecord() error = %v", err)
 	}
-	if rec.ID != 1 {
-		t.Errorf("V1 CreateTXTRecord() record.ID = %d, want 1 (from record_id)", rec.ID)
+	if rec.ID != "1" {
+		t.Errorf("V1 CreateTXTRecord() record.ID = %s, want 1 (from record_id)", rec.ID)
 	}
 
-	err = client.DeleteRecord(ctx, 1, 1)
+	err = client.DeleteRecord(ctx, 1, "1")
 	if err != nil {
 		t.Fatalf("V1 DeleteRecord() error = %v", err)
 	}
@@ -464,7 +511,7 @@ func TestDeleteRecord_HTTPErrors(t *testing.T) {
 	}
 
 	_, client := setupTestServerWithVersion(t, handler, "v2")
-	err := client.DeleteRecord(context.Background(), 1, 999)
+	err := client.DeleteRecord(context.Background(), 1, "999")
 	if err == nil {
 		t.Fatal("expected error for 500 response on delete")
 	}
@@ -482,7 +529,7 @@ func TestDeleteRecord_NotFoundIsIdempotent(t *testing.T) {
 	}
 
 	_, client := setupTestServerWithVersion(t, handler, "v2")
-	if err := client.DeleteRecord(context.Background(), 1, 999); err != nil {
+	if err := client.DeleteRecord(context.Background(), 1, "999"); err != nil {
 		t.Errorf("expected nil (idempotent) for 404 on delete, got: %v", err)
 	}
 }
@@ -665,7 +712,7 @@ func TestCreateTXTRecord_AutoQuotes(t *testing.T) {
 			receivedContent = body["content"].(string)
 
 			writeV2CreateRecordResponse(w, Record{
-				ID: 30, Name: "_acme-challenge.example.com",
+				ID: "30", Name: "_acme-challenge.example.com",
 				Type: "TXT", Content: receivedContent, TTL: 120,
 			})
 			return

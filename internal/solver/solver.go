@@ -132,7 +132,7 @@ func (s *PowerAdminSolver) CleanUp(ch *v1alpha1.ChallengeRequest) error {
 	for _, r := range cc.records {
 		if r.Name == cc.fqdn && poweradmin.NormalizeTXTContent(r.Content) == poweradmin.NormalizeTXTContent(cc.txtKey) {
 			if err := cc.client.DeleteRecord(context.Background(), cc.zone.ID, r.ID); err != nil {
-				return fmt.Errorf("failed to delete TXT record %d for %q in zone %q: %w", r.ID, cc.fqdn, cc.zone.Name, err)
+				return fmt.Errorf("failed to delete TXT record %q for %q in zone %q: %w", r.ID, cc.fqdn, cc.zone.Name, err)
 			}
 		}
 	}

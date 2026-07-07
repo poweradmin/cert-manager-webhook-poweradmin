@@ -3,6 +3,7 @@ package solver
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"testing"
 
 	"github.com/cert-manager/cert-manager/pkg/acme/webhook"
@@ -44,7 +45,7 @@ type createRecordCall struct {
 
 type deleteRecordCall struct {
 	ZoneID   int
-	RecordID int
+	RecordID poweradmin.RecordID
 }
 
 func newMockDNSProvider(zones []poweradmin.Zone) *mockDNSProvider {
@@ -84,7 +85,7 @@ func (m *mockDNSProvider) CreateTXTRecord(_ context.Context, zoneID int, name, c
 		return nil, m.createRecordErr
 	}
 	record := poweradmin.Record{
-		ID:      m.nextID,
+		ID:      poweradmin.RecordID(strconv.Itoa(m.nextID)),
 		Name:    name,
 		Type:    "TXT",
 		Content: content,
@@ -95,7 +96,7 @@ func (m *mockDNSProvider) CreateTXTRecord(_ context.Context, zoneID int, name, c
 	return &record, nil
 }
 
-func (m *mockDNSProvider) DeleteRecord(_ context.Context, zoneID int, recordID int) error {
+func (m *mockDNSProvider) DeleteRecord(_ context.Context, zoneID int, recordID poweradmin.RecordID) error {
 	m.deleteRecordCalls = append(m.deleteRecordCalls, deleteRecordCall{zoneID, recordID})
 	if m.deleteRecordErr != nil {
 		return m.deleteRecordErr
@@ -107,7 +108,7 @@ func (m *mockDNSProvider) DeleteRecord(_ context.Context, zoneID int, recordID i
 			return nil
 		}
 	}
-	return fmt.Errorf("record %d not found", recordID)
+	return fmt.Errorf("record %s not found", recordID)
 }
 
 func (m *mockDNSProvider) addRecord(zoneID int, record poweradmin.Record) {
@@ -398,7 +399,7 @@ func TestPresent_Idempotent(t *testing.T) {
 
 	// Add existing record with quoted content (as the API would return).
 	mock.addRecord(1, poweradmin.Record{
-		ID: 100, Name: fqdn, Type: "TXT", Content: `"test-token"`, TTL: 120,
+		ID: "100", Name: fqdn, Type: "TXT", Content: `"test-token"`, TTL: 120,
 	})
 
 	records, _ := mock.ListTXTRecords(context.Background(), 1)
@@ -423,7 +424,7 @@ func TestPresent_IdempotentWithUnquotedContent(t *testing.T) {
 
 	// API returns content without quotes.
 	mock.addRecord(1, poweradmin.Record{
-		ID: 100, Name: fqdn, Type: "TXT", Content: "test-token", TTL: 120,
+		ID: "100", Name: fqdn, Type: "TXT", Content: "test-token", TTL: 120,
 	})
 
 	records, _ := mock.ListTXTRecords(context.Background(), 1)
@@ -447,10 +448,10 @@ func TestCleanUp_DeletesOnlyMatchingRecord(t *testing.T) {
 
 	// Two TXT records for the same FQDN (concurrent validations).
 	mock.addRecord(1, poweradmin.Record{
-		ID: 100, Name: fqdn, Type: "TXT", Content: `"token-A"`, TTL: 120,
+		ID: "100", Name: fqdn, Type: "TXT", Content: `"token-A"`, TTL: 120,
 	})
 	mock.addRecord(1, poweradmin.Record{
-		ID: 101, Name: fqdn, Type: "TXT", Content: `"token-B"`, TTL: 120,
+		ID: "101", Name: fqdn, Type: "TXT", Content: `"token-B"`, TTL: 120,
 	})
 
 	records, _ := mock.ListTXTRecords(context.Background(), 1)
@@ -467,8 +468,8 @@ func TestCleanUp_DeletesOnlyMatchingRecord(t *testing.T) {
 	if len(mock.deleteRecordCalls) != 1 {
 		t.Fatalf("expected 1 delete call, got %d", len(mock.deleteRecordCalls))
 	}
-	if mock.deleteRecordCalls[0].RecordID != 100 {
-		t.Errorf("deleted record ID = %d, want 100", mock.deleteRecordCalls[0].RecordID)
+	if mock.deleteRecordCalls[0].RecordID != "100" {
+		t.Errorf("deleted record ID = %s, want 100", mock.deleteRecordCalls[0].RecordID)
 	}
 
 	// Verify token-B still exists.
@@ -476,8 +477,8 @@ func TestCleanUp_DeletesOnlyMatchingRecord(t *testing.T) {
 	if len(remaining) != 1 {
 		t.Fatalf("expected 1 remaining record, got %d", len(remaining))
 	}
-	if remaining[0].ID != 101 {
-		t.Errorf("remaining record ID = %d, want 101 (token-B)", remaining[0].ID)
+	if remaining[0].ID != "101" {
+		t.Errorf("remaining record ID = %s, want 101 (token-B)", remaining[0].ID)
 	}
 }
 
@@ -487,7 +488,7 @@ func TestCleanUp_NoMatchingRecord(t *testing.T) {
 	key := fmt.Sprintf("%q", "nonexistent-token")
 
 	mock.addRecord(1, poweradmin.Record{
-		ID: 100, Name: fqdn, Type: "TXT", Content: `"other-token"`, TTL: 120,
+		ID: "100", Name: fqdn, Type: "TXT", Content: `"other-token"`, TTL: 120,
 	})
 
 	records, _ := mock.ListTXTRecords(context.Background(), 1)
@@ -511,7 +512,7 @@ func TestCleanUp_HandlesUnquotedAPIResponse(t *testing.T) {
 
 	// API returns unquoted content.
 	mock.addRecord(1, poweradmin.Record{
-		ID: 200, Name: fqdn, Type: "TXT", Content: "my-token", TTL: 120,
+		ID: "200", Name: fqdn, Type: "TXT", Content: "my-token", TTL: 120,
 	})
 
 	records, _ := mock.ListTXTRecords(context.Background(), 1)
@@ -525,8 +526,8 @@ func TestCleanUp_HandlesUnquotedAPIResponse(t *testing.T) {
 	if len(mock.deleteRecordCalls) != 1 {
 		t.Fatalf("expected 1 delete call (normalized match), got %d", len(mock.deleteRecordCalls))
 	}
-	if mock.deleteRecordCalls[0].RecordID != 200 {
-		t.Errorf("deleted record ID = %d, want 200", mock.deleteRecordCalls[0].RecordID)
+	if mock.deleteRecordCalls[0].RecordID != "200" {
+		t.Errorf("deleted record ID = %s, want 200", mock.deleteRecordCalls[0].RecordID)
 	}
 }
 
