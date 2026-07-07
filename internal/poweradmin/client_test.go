@@ -664,7 +664,8 @@ func TestEnsureTXTQuoted(t *testing.T) {
 		{"already quoted", `"test-value"`, `"test-value"`},
 		{"empty", "", `""`},
 		{"with spaces", "hello world", `"hello world"`},
-		{"already double-quoted", `""test""`, `"test"`},
+		{"inner quotes preserved", `""test""`, `""test""`},
+		{"lone quote wrapped", `"`, `"""`},
 	}
 
 	for _, tt := range tests {
@@ -687,6 +688,8 @@ func TestNormalizeTXTContent(t *testing.T) {
 		{"unquoted", "test-value", "test-value"},
 		{"empty", "", ""},
 		{"empty quotes", `""`, ""},
+		{"only one pair stripped", `""nested""`, `"nested"`},
+		{"lone quote unchanged", `"`, `"`},
 	}
 
 	for _, tt := range tests {

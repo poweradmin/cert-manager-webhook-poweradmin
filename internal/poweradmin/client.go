@@ -260,17 +260,25 @@ func (c *client) DeleteRecord(ctx context.Context, zoneID int, recordID RecordID
 	return nil
 }
 
+// trimOneQuotePair strips exactly one pair of surrounding double quotes.
+// Unlike strings.Trim, it never eats quotes that are part of the content.
+func trimOneQuotePair(content string) string {
+	if len(content) >= 2 && content[0] == '"' && content[len(content)-1] == '"' {
+		return content[1 : len(content)-1]
+	}
+	return content
+}
+
 // EnsureTXTQuoted ensures TXT record content is enclosed in double quotes.
-// Strips any existing surrounding quotes first to avoid double-quoting.
+// Strips one pair of existing surrounding quotes first to avoid double-quoting.
 func EnsureTXTQuoted(content string) string {
-	content = strings.Trim(content, "\"")
-	return fmt.Sprintf("\"%s\"", content)
+	return `"` + trimOneQuotePair(content) + `"`
 }
 
 // NormalizeTXTContent strips surrounding quotes from TXT content for comparison.
 // The API may return quoted or unquoted values depending on version.
 func NormalizeTXTContent(content string) string {
-	return strings.Trim(content, "\"")
+	return trimOneQuotePair(content)
 }
 
 // NewClient creates a DNSProvider for the given API version.
