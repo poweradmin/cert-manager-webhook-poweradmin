@@ -115,7 +115,12 @@ func (s *PowerAdminSolver) Present(ch *v1alpha1.ChallengeRequest) error {
 
 	// Check idempotency: if a matching record already exists, skip creation.
 	// Normalize TXT content for comparison since the API may return quoted or unquoted values.
+	// Disabled records are not served by DNS and cannot satisfy the challenge,
+	// so they don't count as existing.
 	for _, r := range cc.records {
+		if r.Disabled {
+			continue
+		}
 		if r.Name == cc.fqdn && poweradmin.NormalizeTXTContent(r.Content) == poweradmin.NormalizeTXTContent(cc.txtKey) {
 			return nil
 		}

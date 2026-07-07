@@ -527,6 +527,31 @@ func TestCleanUp_HandlesUnquotedAPIResponse(t *testing.T) {
 	}
 }
 
+// A disabled record is not served by DNS, so it must not satisfy the
+// idempotency check; CleanUp still removes it.
+func TestPresent_IgnoresDisabledRecord(t *testing.T) {
+	mock := newMockDNSProvider([]poweradmin.Zone{{ID: 1, Name: "example.com"}})
+	s := newSolverWithMock(mock)
+
+	mock.addRecord(1, poweradmin.Record{
+		ID: "100", Name: testACMEFQDN, Type: "TXT", Content: `"test-token"`, TTL: 120, Disabled: true,
+	})
+
+	if err := s.Present(newChallenge("test-token")); err != nil {
+		t.Fatalf("Present() error = %v", err)
+	}
+	if len(mock.createRecordCalls) != 1 {
+		t.Errorf("expected 1 create call despite disabled record, got %d", len(mock.createRecordCalls))
+	}
+
+	if err := s.CleanUp(newChallenge("test-token")); err != nil {
+		t.Fatalf("CleanUp() error = %v", err)
+	}
+	if len(mock.deleteRecordCalls) != 2 {
+		t.Errorf("expected CleanUp to delete both disabled and active records, got %d deletes", len(mock.deleteRecordCalls))
+	}
+}
+
 func TestPresent_TTLOverride(t *testing.T) {
 	mock := newMockDNSProvider([]poweradmin.Zone{{ID: 1, Name: "example.com"}})
 	s := newSolverWithMock(mock)
