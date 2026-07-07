@@ -527,6 +527,31 @@ func TestCleanUp_HandlesUnquotedAPIResponse(t *testing.T) {
 	}
 }
 
+// DNS names are case-insensitive: a zone or record stored with uppercase
+// letters in PowerAdmin must still match cert-manager's lowercase FQDNs.
+func TestCaseInsensitiveMatching(t *testing.T) {
+	mock := newMockDNSProvider([]poweradmin.Zone{{ID: 1, Name: "Example.COM"}})
+	s := newSolverWithMock(mock)
+
+	mock.addRecord(1, poweradmin.Record{
+		ID: "100", Name: "_ACME-Challenge.Example.COM", Type: "TXT", Content: `"test-token"`, TTL: 120,
+	})
+
+	if err := s.Present(newChallenge("test-token")); err != nil {
+		t.Fatalf("Present() error = %v", err)
+	}
+	if len(mock.createRecordCalls) != 0 {
+		t.Errorf("expected idempotent match across case, got %d create calls", len(mock.createRecordCalls))
+	}
+
+	if err := s.CleanUp(newChallenge("test-token")); err != nil {
+		t.Fatalf("CleanUp() error = %v", err)
+	}
+	if len(mock.deleteRecordCalls) != 1 {
+		t.Errorf("expected 1 delete across case, got %d", len(mock.deleteRecordCalls))
+	}
+}
+
 // A disabled record is not served by DNS, so it must not satisfy the
 // idempotency check; CleanUp still removes it.
 func TestPresent_IgnoresDisabledRecord(t *testing.T) {

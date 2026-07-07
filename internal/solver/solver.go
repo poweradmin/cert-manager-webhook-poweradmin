@@ -121,7 +121,7 @@ func (s *PowerAdminSolver) Present(ch *v1alpha1.ChallengeRequest) error {
 		if r.Disabled {
 			continue
 		}
-		if r.Name == cc.fqdn && poweradmin.NormalizeTXTContent(r.Content) == poweradmin.NormalizeTXTContent(cc.txtKey) {
+		if strings.EqualFold(r.Name, cc.fqdn) && poweradmin.NormalizeTXTContent(r.Content) == poweradmin.NormalizeTXTContent(cc.txtKey) {
 			return nil
 		}
 	}
@@ -151,7 +151,7 @@ func (s *PowerAdminSolver) CleanUp(ch *v1alpha1.ChallengeRequest) error {
 	}
 
 	for _, r := range cc.records {
-		if r.Name == cc.fqdn && poweradmin.NormalizeTXTContent(r.Content) == poweradmin.NormalizeTXTContent(cc.txtKey) {
+		if strings.EqualFold(r.Name, cc.fqdn) && poweradmin.NormalizeTXTContent(r.Content) == poweradmin.NormalizeTXTContent(cc.txtKey) {
 			if err := cc.client.DeleteRecord(context.Background(), cc.zone.ID, r.ID); err != nil {
 				return fmt.Errorf("failed to delete TXT record %q for %q in zone %q: %w", r.ID, cc.fqdn, cc.zone.Name, err)
 			}
@@ -189,15 +189,16 @@ func (s *PowerAdminSolver) findZone(ctx context.Context, client poweradmin.DNSPr
 		return nil, fmt.Errorf("failed to list zones from PowerAdmin: %w", err)
 	}
 
+	// DNS names are case-insensitive; index zones lowercased.
 	zoneMap := make(map[string]*poweradmin.Zone, len(zones))
 	for i := range zones {
-		zoneMap[zones[i].Name] = &zones[i]
+		zoneMap[strings.ToLower(zones[i].Name)] = &zones[i]
 	}
 
 	// cert-manager's ResolvedZone is the authoritative zone cut for the FQDN.
 	// A TXT record created in any other (parent) zone would be invisible to
 	// ACME validators, so when it is set, require an exact match.
-	if zoneName := strings.TrimSuffix(ch.ResolvedZone, "."); zoneName != "" {
+	if zoneName := strings.ToLower(strings.TrimSuffix(ch.ResolvedZone, ".")); zoneName != "" {
 		if zone, ok := zoneMap[zoneName]; ok {
 			return zone, nil
 		}
@@ -206,7 +207,7 @@ func (s *PowerAdminSolver) findZone(ctx context.Context, client poweradmin.DNSPr
 	}
 
 	// No ResolvedZone: walk from the full FQDN up to the most specific zone.
-	fqdn := strings.TrimSuffix(ch.ResolvedFQDN, ".")
+	fqdn := strings.ToLower(strings.TrimSuffix(ch.ResolvedFQDN, "."))
 	parts := strings.Split(fqdn, ".")
 	for i := 0; i < len(parts); i++ {
 		candidate := strings.Join(parts[i:], ".")
