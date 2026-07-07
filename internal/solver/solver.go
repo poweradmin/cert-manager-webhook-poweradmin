@@ -24,11 +24,13 @@ var errZoneNotFound = errors.New("zone not found in PowerAdmin")
 // for PowerAdmin DNS provider.
 type PowerAdminSolver struct {
 	kubeClient kubernetes.Interface
+	// newClient creates the PowerAdmin API client; overridable in tests.
+	newClient func(serverURL, apiKey, apiVersion string, insecure bool) (poweradmin.DNSProvider, error)
 }
 
 // New creates a new PowerAdminSolver.
 func New() *PowerAdminSolver {
-	return &PowerAdminSolver{}
+	return &PowerAdminSolver{newClient: poweradmin.NewClient}
 }
 
 func (s *PowerAdminSolver) Name() string {
@@ -71,7 +73,11 @@ func (s *PowerAdminSolver) resolveChallenge(ch *v1alpha1.ChallengeRequest) (*cha
 		return nil, err
 	}
 
-	client, err := poweradmin.NewClient(cfg.ServerURL, apiKey, cfg.APIVersion, cfg.Insecure)
+	newClient := s.newClient
+	if newClient == nil {
+		newClient = poweradmin.NewClient
+	}
+	client, err := newClient(cfg.ServerURL, apiKey, cfg.APIVersion, cfg.Insecure)
 	if err != nil {
 		return nil, err
 	}

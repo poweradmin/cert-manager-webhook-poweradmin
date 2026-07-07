@@ -120,6 +120,8 @@ func (m *mockDNSProvider) addRecord(zoneID int, record poweradmin.Record) {
 
 // --- Test Helpers ---
 
+const testSolverConfig = `{"serverURL":"https://pa.example.com","apiKeySecretRef":{"name":"poweradmin-api-key","key":"api-key"}}`
+
 func newSolverWithMock(mock *mockDNSProvider) *PowerAdminSolver {
 	s := New()
 	s.kubeClient = fakeclient.NewClientset(
@@ -133,13 +135,25 @@ func newSolverWithMock(mock *mockDNSProvider) *PowerAdminSolver {
 			},
 		},
 	)
+	if mock != nil {
+		s.newClient = func(_, _, _ string, _ bool) (poweradmin.DNSProvider, error) {
+			return mock, nil
+		}
+	}
 	return s
 }
 
-// solverWithClient creates a solver that uses a real mock provider by overriding resolveChallenge.
-// Since the solver creates its own client internally, we test through the full flow
-// using a fake K8s client + httptest server. For unit tests that need precise control,
-// we test individual components instead.
+// newChallenge builds a ChallengeRequest for testACMEFQDN with the given key
+// and the default test solver config.
+func newChallenge(key string) *v1alpha1.ChallengeRequest {
+	return &v1alpha1.ChallengeRequest{
+		ResourceNamespace: "default",
+		ResolvedZone:      "example.com.",
+		ResolvedFQDN:      testACMEFQDN + ".",
+		Key:               key,
+		Config:            &extapi.JSON{Raw: []byte(testSolverConfig)},
+	}
+}
 
 // --- Tests ---
 
@@ -387,17 +401,10 @@ func TestFindZone_APIError(t *testing.T) {
 
 func TestPresent_CreatesRecord(t *testing.T) {
 	mock := newMockDNSProvider([]poweradmin.Zone{{ID: 1, Name: "example.com"}})
-	_ = newSolverWithMock(mock)
+	s := newSolverWithMock(mock)
 
-	// Override resolveChallenge by testing the logic components directly.
-	// Present creates a TXT record when none exists.
-	fqdn := testACMEFQDN
-	key := fmt.Sprintf("%q", "test-token")
-
-	// No existing records — should create.
-	_, err := mock.CreateTXTRecord(context.Background(), 1, fqdn, poweradmin.EnsureTXTQuoted(key), 120)
-	if err != nil {
-		t.Fatalf("CreateTXTRecord() error = %v", err)
+	if err := s.Present(newChallenge("test-token")); err != nil {
+		t.Fatalf("Present() error = %v", err)
 	}
 	if len(mock.createRecordCalls) != 1 {
 		t.Fatalf("expected 1 create call, got %d", len(mock.createRecordCalls))
@@ -406,82 +413,65 @@ func TestPresent_CreatesRecord(t *testing.T) {
 	if call.ZoneID != 1 {
 		t.Errorf("create call zoneID = %d, want 1", call.ZoneID)
 	}
-	if call.Name != fqdn {
-		t.Errorf("create call name = %q, want %q", call.Name, fqdn)
+	if call.Name != testACMEFQDN {
+		t.Errorf("create call name = %q, want %q", call.Name, testACMEFQDN)
+	}
+	if poweradmin.NormalizeTXTContent(call.Content) != "test-token" {
+		t.Errorf("create call content = %q, want quoted test-token", call.Content)
+	}
+	if call.TTL != defaultTTL {
+		t.Errorf("create call ttl = %d, want default %d", call.TTL, defaultTTL)
 	}
 }
 
 func TestPresent_Idempotent(t *testing.T) {
 	mock := newMockDNSProvider([]poweradmin.Zone{{ID: 1, Name: "example.com"}})
-	fqdn := testACMEFQDN
-	key := fmt.Sprintf("%q", "test-token")
+	s := newSolverWithMock(mock)
 
-	// Add existing record with quoted content (as the API would return).
+	// Existing record with quoted content (as the API would return).
 	mock.addRecord(1, poweradmin.Record{
-		ID: "100", Name: fqdn, Type: "TXT", Content: `"test-token"`, TTL: 120,
+		ID: "100", Name: testACMEFQDN, Type: "TXT", Content: `"test-token"`, TTL: 120,
 	})
 
-	records, _ := mock.ListTXTRecords(context.Background(), 1)
-
-	// Simulate idempotency check from Present.
-	shouldCreate := true
-	for _, r := range records {
-		if r.Name == fqdn && poweradmin.NormalizeTXTContent(r.Content) == poweradmin.NormalizeTXTContent(key) {
-			shouldCreate = false
-			break
-		}
+	if err := s.Present(newChallenge("test-token")); err != nil {
+		t.Fatalf("Present() error = %v", err)
 	}
-	if shouldCreate {
-		t.Error("expected idempotency check to detect existing record")
+	if len(mock.createRecordCalls) != 0 {
+		t.Errorf("expected no create calls for existing record, got %d", len(mock.createRecordCalls))
 	}
 }
 
 func TestPresent_IdempotentWithUnquotedContent(t *testing.T) {
 	mock := newMockDNSProvider([]poweradmin.Zone{{ID: 1, Name: "example.com"}})
-	fqdn := testACMEFQDN
-	key := fmt.Sprintf("%q", "test-token") // produces `"test-token"`
+	s := newSolverWithMock(mock)
 
 	// API returns content without quotes.
 	mock.addRecord(1, poweradmin.Record{
-		ID: "100", Name: fqdn, Type: "TXT", Content: "test-token", TTL: 120,
+		ID: "100", Name: testACMEFQDN, Type: "TXT", Content: "test-token", TTL: 120,
 	})
 
-	records, _ := mock.ListTXTRecords(context.Background(), 1)
-
-	shouldCreate := true
-	for _, r := range records {
-		if r.Name == fqdn && poweradmin.NormalizeTXTContent(r.Content) == poweradmin.NormalizeTXTContent(key) {
-			shouldCreate = false
-			break
-		}
+	if err := s.Present(newChallenge("test-token")); err != nil {
+		t.Fatalf("Present() error = %v", err)
 	}
-	if shouldCreate {
-		t.Error("normalized comparison should match quoted key with unquoted API response")
+	if len(mock.createRecordCalls) != 0 {
+		t.Errorf("expected no create calls for existing unquoted record, got %d", len(mock.createRecordCalls))
 	}
 }
 
 func TestCleanUp_DeletesOnlyMatchingRecord(t *testing.T) {
 	mock := newMockDNSProvider([]poweradmin.Zone{{ID: 1, Name: "example.com"}})
-	fqdn := testACMEFQDN
-	key := fmt.Sprintf("%q", "token-A")
+	s := newSolverWithMock(mock)
 
 	// Two TXT records for the same FQDN (concurrent validations).
 	mock.addRecord(1, poweradmin.Record{
-		ID: "100", Name: fqdn, Type: "TXT", Content: `"token-A"`, TTL: 120,
+		ID: "100", Name: testACMEFQDN, Type: "TXT", Content: `"token-A"`, TTL: 120,
 	})
 	mock.addRecord(1, poweradmin.Record{
-		ID: "101", Name: fqdn, Type: "TXT", Content: `"token-B"`, TTL: 120,
+		ID: "101", Name: testACMEFQDN, Type: "TXT", Content: `"token-B"`, TTL: 120,
 	})
 
-	records, _ := mock.ListTXTRecords(context.Background(), 1)
-
-	// Simulate CleanUp logic — only delete records matching exact key.
-	for _, r := range records {
-		if r.Name == fqdn && poweradmin.NormalizeTXTContent(r.Content) == poweradmin.NormalizeTXTContent(key) {
-			if err := mock.DeleteRecord(context.Background(), 1, r.ID); err != nil {
-				t.Fatalf("DeleteRecord() error = %v", err)
-			}
-		}
+	if err := s.CleanUp(newChallenge("token-A")); err != nil {
+		t.Fatalf("CleanUp() error = %v", err)
 	}
 
 	if len(mock.deleteRecordCalls) != 1 {
@@ -503,22 +493,15 @@ func TestCleanUp_DeletesOnlyMatchingRecord(t *testing.T) {
 
 func TestCleanUp_NoMatchingRecord(t *testing.T) {
 	mock := newMockDNSProvider([]poweradmin.Zone{{ID: 1, Name: "example.com"}})
-	fqdn := testACMEFQDN
-	key := fmt.Sprintf("%q", "nonexistent-token")
+	s := newSolverWithMock(mock)
 
 	mock.addRecord(1, poweradmin.Record{
-		ID: "100", Name: fqdn, Type: "TXT", Content: `"other-token"`, TTL: 120,
+		ID: "100", Name: testACMEFQDN, Type: "TXT", Content: `"other-token"`, TTL: 120,
 	})
 
-	records, _ := mock.ListTXTRecords(context.Background(), 1)
-
-	// CleanUp with non-matching key should delete nothing.
-	for _, r := range records {
-		if r.Name == fqdn && poweradmin.NormalizeTXTContent(r.Content) == poweradmin.NormalizeTXTContent(key) {
-			t.Error("should not match any record")
-		}
+	if err := s.CleanUp(newChallenge("nonexistent-token")); err != nil {
+		t.Fatalf("CleanUp() error = %v", err)
 	}
-
 	if len(mock.deleteRecordCalls) != 0 {
 		t.Errorf("expected 0 delete calls, got %d", len(mock.deleteRecordCalls))
 	}
@@ -526,27 +509,48 @@ func TestCleanUp_NoMatchingRecord(t *testing.T) {
 
 func TestCleanUp_HandlesUnquotedAPIResponse(t *testing.T) {
 	mock := newMockDNSProvider([]poweradmin.Zone{{ID: 1, Name: "example.com"}})
-	fqdn := testACMEFQDN
-	key := fmt.Sprintf("%q", "my-token") // `"my-token"`
+	s := newSolverWithMock(mock)
 
 	// API returns unquoted content.
 	mock.addRecord(1, poweradmin.Record{
-		ID: "200", Name: fqdn, Type: "TXT", Content: "my-token", TTL: 120,
+		ID: "200", Name: testACMEFQDN, Type: "TXT", Content: "my-token", TTL: 120,
 	})
 
-	records, _ := mock.ListTXTRecords(context.Background(), 1)
-
-	for _, r := range records {
-		if r.Name == fqdn && poweradmin.NormalizeTXTContent(r.Content) == poweradmin.NormalizeTXTContent(key) {
-			_ = mock.DeleteRecord(context.Background(), 1, r.ID)
-		}
+	if err := s.CleanUp(newChallenge("my-token")); err != nil {
+		t.Fatalf("CleanUp() error = %v", err)
 	}
-
 	if len(mock.deleteRecordCalls) != 1 {
 		t.Fatalf("expected 1 delete call (normalized match), got %d", len(mock.deleteRecordCalls))
 	}
 	if mock.deleteRecordCalls[0].RecordID != "200" {
 		t.Errorf("deleted record ID = %s, want 200", mock.deleteRecordCalls[0].RecordID)
+	}
+}
+
+func TestPresent_TTLOverride(t *testing.T) {
+	mock := newMockDNSProvider([]poweradmin.Zone{{ID: 1, Name: "example.com"}})
+	s := newSolverWithMock(mock)
+
+	ch := newChallenge("test-token")
+	ch.Config = &extapi.JSON{Raw: []byte(
+		`{"serverURL":"https://pa.example.com","apiKeySecretRef":{"name":"poweradmin-api-key","key":"api-key"},"ttl":300}`,
+	)}
+
+	if err := s.Present(ch); err != nil {
+		t.Fatalf("Present() error = %v", err)
+	}
+	if len(mock.createRecordCalls) != 1 || mock.createRecordCalls[0].TTL != 300 {
+		t.Errorf("create calls = %+v, want 1 call with TTL 300", mock.createRecordCalls)
+	}
+}
+
+func TestPresent_MissingServerURL(t *testing.T) {
+	s := newSolverWithMock(newMockDNSProvider(nil))
+	ch := newChallenge("test-token")
+	ch.Config = &extapi.JSON{Raw: []byte(`{"apiKeySecretRef":{"name":"poweradmin-api-key","key":"api-key"}}`)}
+
+	if err := s.Present(ch); err == nil {
+		t.Error("Present() without serverURL should error")
 	}
 }
 
