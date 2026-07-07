@@ -288,9 +288,11 @@ func NewClient(serverURL, apiKey, apiVersion string, insecure bool) (DNSProvider
 
 	httpClient := &http.Client{Timeout: 30 * time.Second}
 	if insecure {
-		httpClient.Transport = &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, //nolint:gosec
-		}
+		// Clone the default transport so proxy settings, timeouts, and
+		// HTTP/2 support are preserved; only skip certificate verification.
+		transport := http.DefaultTransport.(*http.Transport).Clone()
+		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true} //nolint:gosec
+		httpClient.Transport = transport
 	}
 
 	version := apiVersion
