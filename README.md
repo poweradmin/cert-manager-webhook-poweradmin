@@ -72,6 +72,14 @@ stringData:
   api-key: "pwa_your_api_key_here"
 ```
 
+> **Note:** The webhook can only read Secrets in the cert-manager namespace by
+> default (`certManager.namespace`, covers ClusterIssuers). If a namespaced
+> Issuer references a Secret in another namespace, add that namespace to the
+> chart value `rbac.secretReader.additionalNamespaces`. You can further restrict
+> access to specific Secret names with `rbac.secretReader.secretNames`, or
+> restore the previous cluster-wide access with
+> `rbac.secretReader.clusterScope=true` (not recommended).
+
 ### 2. Configure ClusterIssuer
 
 ```yaml
@@ -128,6 +136,18 @@ spec:
 | `apiVersion`           | No       | `"v2"`  | PowerAdmin API version (`"v1"` or `"v2"`) |
 | `ttl`                  | No       | `120`   | TTL for TXT records in seconds            |
 | `insecure`             | No       | `false` | Skip TLS verification for PowerAdmin API  |
+
+## Upgrading to 0.2.x
+
+- **Secret RBAC is now namespace-scoped.** The webhook previously could read
+  Secrets cluster-wide; it now gets a Role only in the cert-manager namespace.
+  If you use namespaced Issuers with Secrets in other namespaces, set
+  `rbac.secretReader.additionalNamespaces` accordingly.
+- **Zone resolution is stricter.** If the authoritative zone for a domain (as
+  discovered by cert-manager) is not managed by your PowerAdmin instance, the
+  challenge now fails immediately with a clear error instead of silently
+  creating a TXT record in a parent zone where ACME validators would never
+  find it. Working setups are unaffected.
 
 ## Development
 
