@@ -593,6 +593,26 @@ func TestRedirectsNotFollowed(t *testing.T) {
 	}
 }
 
+// Oversized raw bodies must be truncated when embedded in error messages.
+func TestAPIError_TruncatesLargeBody(t *testing.T) {
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadGateway)
+		_, _ = w.Write([]byte(strings.Repeat("x", 64*1024)))
+	}
+
+	_, client := setupTestServerWithVersion(t, handler, "v2")
+	_, err := client.GetZones(context.Background())
+	if err == nil {
+		t.Fatal("expected error for 502 response")
+	}
+	if len(err.Error()) > maxErrorBodyBytes+256 {
+		t.Errorf("error message not truncated: %d bytes", len(err.Error()))
+	}
+	if !strings.Contains(err.Error(), "truncated") {
+		t.Errorf("expected truncation marker in error, got %d-byte message", len(err.Error()))
+	}
+}
+
 func TestNewClient_InsecureTLS(t *testing.T) {
 	client, err := NewClient("https://localhost", "key", "v2", true)
 	if err != nil {

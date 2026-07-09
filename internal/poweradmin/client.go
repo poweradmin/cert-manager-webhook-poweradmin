@@ -29,6 +29,22 @@ type apiResponse struct {
 	Message string          `json:"message"`
 }
 
+// maxResponseBytes caps how much of an API response body is read. Zone and
+// record responses are small JSON; the cap keeps a misrouted or hostile
+// endpoint from buffering unbounded data into memory.
+const maxResponseBytes = 1 << 20
+
+// maxErrorBodyBytes caps how much of a raw response body is embedded in errors.
+const maxErrorBodyBytes = 2048
+
+// truncateBody renders a response body for inclusion in an error message.
+func truncateBody(body []byte) string {
+	if len(body) > maxErrorBodyBytes {
+		return string(body[:maxErrorBodyBytes]) + "... (truncated)"
+	}
+	return string(body)
+}
+
 // apiErrorf builds an error from a non-success PowerAdmin API response,
 // preferring the structured "message" field over the raw body when present.
 func apiErrorf(op string, status int, body []byte) error {
@@ -36,7 +52,7 @@ func apiErrorf(op string, status int, body []byte) error {
 	if err := json.Unmarshal(body, &resp); err == nil && resp.Message != "" {
 		return fmt.Errorf("%s: PowerAdmin API returned HTTP %d: %s", op, status, resp.Message)
 	}
-	return fmt.Errorf("%s: PowerAdmin API returned HTTP %d: %s", op, status, string(body))
+	return fmt.Errorf("%s: PowerAdmin API returned HTTP %d: %s", op, status, truncateBody(body))
 }
 
 // v2ZonesData wraps the v2 zones response where data is {"zones": [...]}.
@@ -100,7 +116,7 @@ func (c *client) doRequest(ctx context.Context, method, path string, body interf
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	respBody, err := io.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBytes))
 	if err != nil {
 		return nil, resp.StatusCode, fmt.Errorf("failed to read response body: %w", err)
 	}
