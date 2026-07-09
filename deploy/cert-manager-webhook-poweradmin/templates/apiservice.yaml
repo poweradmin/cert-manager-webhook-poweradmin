@@ -16,4 +16,5 @@ spec:
   service:
     name: {{ include "cert-manager-webhook-poweradmin.fullname" . }}
     namespace: {{ .Release.Namespace }}
+    port: {{ .Values.service.port }}
   version: v1alpha1
