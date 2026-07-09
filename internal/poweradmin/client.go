@@ -294,7 +294,17 @@ func NewClient(serverURL, apiKey, apiVersion string, insecure bool) (DNSProvider
 		return nil, fmt.Errorf("unsupported PowerAdmin API version: %q (supported: v1, v2)", apiVersion)
 	}
 
-	httpClient := &http.Client{Timeout: 30 * time.Second}
+	httpClient := &http.Client{
+		Timeout: 30 * time.Second,
+		// Never follow redirects: Go rewrites POST/DELETE into bodiless GETs
+		// on 301/302/303, so behind an http->https redirecting front the
+		// create/delete calls would silently no-op while reads keep working.
+		// Returning the 3xx as-is makes the status checks fail loudly and
+		// points at the misconfigured serverURL instead.
+		CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
 	if insecure {
 		// Clone the default transport so proxy settings, timeouts, and
 		// HTTP/2 support are preserved; only skip certificate verification.

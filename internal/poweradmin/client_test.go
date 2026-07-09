@@ -547,6 +547,52 @@ func TestCreateTXTRecord_ServerError(t *testing.T) {
 	}
 }
 
+// Redirects must not be followed: Go's http.Client rewrites POST/DELETE into
+// bodiless GETs on 301/302/303, which would turn create/delete into silent
+// no-ops behind an http->https redirecting front. A 3xx must surface as an
+// error instead so the misconfigured serverURL is visible.
+func TestRedirectsNotFollowed(t *testing.T) {
+	// Backend that would make every redirected GET "succeed".
+	backendCalled := false
+	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		backendCalled = true
+		if strings.HasSuffix(r.URL.Path, "/zones") {
+			writeV2ZonesResponse(w, []Zone{{ID: 1, Name: "redirect.example"}})
+			return
+		}
+		writeV2RecordsResponse(w, []Record{})
+	}))
+	t.Cleanup(backend.Close)
+
+	// Front that 301-redirects everything to the backend (nginx http->https idiom).
+	front := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, backend.URL+r.URL.RequestURI(), http.StatusMovedPermanently)
+	}))
+	t.Cleanup(front.Close)
+
+	client, err := NewClient(front.URL, "test-api-key", "v2", false)
+	if err != nil {
+		t.Fatalf("NewClient() error = %v", err)
+	}
+	ctx := context.Background()
+
+	if _, err := client.GetZones(ctx); err == nil || !strings.Contains(err.Error(), "301") {
+		t.Errorf("GetZones() through redirect: want HTTP 301 error, got %v", err)
+	}
+	if _, err := client.ListTXTRecords(ctx, 1); err == nil || !strings.Contains(err.Error(), "301") {
+		t.Errorf("ListTXTRecords() through redirect: want HTTP 301 error, got %v", err)
+	}
+	if _, err := client.CreateTXTRecord(ctx, 1, "test", "val", 120); err == nil || !strings.Contains(err.Error(), "301") {
+		t.Errorf("CreateTXTRecord() through redirect: want HTTP 301 error, got %v", err)
+	}
+	if err := client.DeleteRecord(ctx, 1, "10"); err == nil || !strings.Contains(err.Error(), "301") {
+		t.Errorf("DeleteRecord() through redirect: want HTTP 301 error, got %v", err)
+	}
+	if backendCalled {
+		t.Error("redirect target was contacted; redirects must not be followed")
+	}
+}
+
 func TestNewClient_InsecureTLS(t *testing.T) {
 	client, err := NewClient("https://localhost", "key", "v2", true)
 	if err != nil {
