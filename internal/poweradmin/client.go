@@ -66,8 +66,11 @@ type v2RecordsData struct {
 }
 
 // v2RecordData wraps the v2 create-record response where data is {"record": {...}}.
+// Record is a pointer so a response without a "record" key is distinguishable
+// from a genuine record: unmarshaling into a struct ignores unknown keys, so
+// e.g. a records-list body would otherwise parse "successfully" into a zero value.
 type v2RecordData struct {
-	Record Record `json:"record"`
+	Record *Record `json:"record"`
 }
 
 // v1RecordData maps the v1 create-record response where the ID field is "record_id".
@@ -238,7 +241,10 @@ func (c *client) CreateTXTRecord(ctx context.Context, zoneID int, name, content 
 		if err := json.Unmarshal(resp.Data, &wrapper); err != nil {
 			return nil, fmt.Errorf("failed to parse v2 record data: %w", err)
 		}
-		record = wrapper.Record
+		if wrapper.Record == nil {
+			return nil, fmt.Errorf("create TXT record: response contained no record object: %s", truncateBody(resp.Data))
+		}
+		record = *wrapper.Record
 	} else {
 		// V1: data is flat object with "record_id" instead of "id"
 		var v1data v1RecordData

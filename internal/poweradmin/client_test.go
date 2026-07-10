@@ -593,6 +593,25 @@ func TestRedirectsNotFollowed(t *testing.T) {
 	}
 }
 
+// A 200 response whose data lacks a "record" object (e.g. a records-list body
+// from a redirect-rewritten request, or a proxy's JSON page) must not be
+// treated as a successful create.
+func TestCreateTXTRecord_MissingRecordObject(t *testing.T) {
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"success":true,"data":{"records":[]},"message":"ok"}`))
+	}
+
+	_, client := setupTestServerWithVersion(t, handler, "v2")
+	_, err := client.CreateTXTRecord(context.Background(), 1, "test", "val", 120)
+	if err == nil {
+		t.Fatal("expected error for create response without a record object")
+	}
+	if !strings.Contains(err.Error(), "no record object") {
+		t.Errorf("expected 'no record object' error, got: %v", err)
+	}
+}
+
 // Oversized raw bodies must be truncated when embedded in error messages.
 func TestAPIError_TruncatesLargeBody(t *testing.T) {
 	handler := func(w http.ResponseWriter, r *http.Request) {
