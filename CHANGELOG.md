@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.2](https://github.com/poweradmin/cert-manager-webhook-poweradmin/compare/v0.2.1...v0.2.2) (2026-07-10)
+
+
+### Documentation
+
+* add 0.2.0 compatibility row with PowerDNS API backend support ([fa74d58](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/fa74d585d13005bf013b570ca1ea210e9f3c436b))
+
 ## [0.2.1](https://github.com/poweradmin/cert-manager-webhook-poweradmin/compare/v0.2.0...v0.2.1) (2026-07-10)
 
 
