@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.2.1](https://github.com/poweradmin/cert-manager-webhook-poweradmin/compare/v0.2.0...v0.2.1) (2026-07-10)
+
+
+### Bug Fixes
+
+* bump Go to 1.26.5 and x/crypto to v0.54.0 for GO-2026-5856 and GO-2026-5932 ([87b65b3](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/87b65b3c90a8a3e99d2b3077c7ad37dac0e57e14))
+* **client:** cap API response reads at 1MiB and truncate bodies embedded in errors ([78516f0](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/78516f0e4d7ce176712bac399c39f9bc735c2f1b))
+* **client:** reject v2 create responses that lack a record object ([cea7aab](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/cea7aab408f354159d107e484d8da019d0d67047))
+* **client:** stop following HTTP redirects that rewrite create/delete into no-op GETs ([8cf0335](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/8cf033505d2477111d5d4659c9cca6723cbf65d3))
+* **helm:** set APIService port to the configured service port ([8e3ff4f](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/8e3ff4f08c622dd72524b54e15853e50b3a3a12e))
+
 ## [0.2.0](https://github.com/poweradmin/cert-manager-webhook-poweradmin/compare/v0.1.12...v0.2.0) (2026-07-07)
 
 
