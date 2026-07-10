@@ -1,0 +1,4 @@
+# GO-2026-5932: "golang.org/x/crypto/openpgp is unmaintained" advisory. No
+# fixed version exists, and this project never imports openpgp (govulncheck
+# confirms no reachable symbols). Drop once x/crypto removes the package.
+GO-2026-5932
