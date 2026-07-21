@@ -20,6 +20,12 @@ updates:
       timezone: "Europe/Vilnius"
     cooldown:
       default-days: 7
+    # codeql-action init/autobuild/analyze must move in lockstep —
+    # mixed versions fail with a config-version mismatch.
+    groups:
+      codeql-action:
+        patterns:
+          - "github/codeql-action*"
   - package-ecosystem: "docker"
     directory: "/"
     schedule:
