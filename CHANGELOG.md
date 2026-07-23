@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.3](https://github.com/poweradmin/cert-manager-webhook-poweradmin/compare/v0.2.2...v0.2.3) (2026-07-23)
+
+
+### Documentation
+
+* extend compatibility table to Poweradmin 4.4.x ([a9da5b8](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/a9da5b8a96a00c60dede1c7411853c9340757aa1))
+
 ## [0.2.2](https://github.com/poweradmin/cert-manager-webhook-poweradmin/compare/v0.2.1...v0.2.2) (2026-07-10)
 
 
