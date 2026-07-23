@@ -12,7 +12,7 @@ A [cert-manager](https://cert-manager.io/) webhook for [PowerAdmin](https://www.
 
 | Webhook Version | Poweradmin Version                          | cert-manager | Kubernetes |
 |-----------------|---------------------------------------------|--------------|------------|
-| 0.2.0+          | 4.1.0+ (v1 API), 4.2.0+ (v2 API), 4.3.0+ incl. PowerDNS API backend | >= 1.0 | >= 1.25 |
+| 0.2.0+          | 4.1.0 - 4.4.x (v2 API since 4.2.0), 4.3.0+ incl. PowerDNS API backend | >= 1.0 | >= 1.25 |
 | 0.1.6+          | 4.1.0+ (v1 API), 4.2.0+ (v2 API), 4.3.0+  | >= 1.0       | >= 1.25    |
 | 0.1.0–0.1.5     | 4.1.0+ (v1 API), 4.2.0+ (v2 API)           | >= 1.0       | >= 1.25    |
 
