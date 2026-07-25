@@ -7,6 +7,16 @@
 
 * bump actions/checkout from 7.0.0 to 7.0.1 ([#102](https://github.com/poweradmin/cert-manager-webhook-poweradmin/issues/102)) ([3d9e607](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/3d9e60713c3ddf1e1c4343e7283c54125ffe90f2))
 * bump actions/setup-go from 6.5.0 to 7.0.0 ([#103](https://github.com/poweradmin/cert-manager-webhook-poweradmin/issues/103)) ([9fb68af](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/9fb68af911c5f981f36f348291544e70428e07dc))
+* bump docker/login-action from 4.2.0 to 4.4.0 ([#93](https://github.com/poweradmin/cert-manager-webhook-poweradmin/issues/93)) ([eb5a08a](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/eb5a08a3a8cd0e74994fb906fd6de181b63e52c3))
+* bump docker/setup-buildx-action from 4.1.0 to 4.2.0 ([#87](https://github.com/poweradmin/cert-manager-webhook-poweradmin/issues/87)) ([025fbcd](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/025fbcda46ae1f594c3fde6877f2ad8ba8a495f3))
+* bump docker/setup-qemu-action from 4.1.0 to 4.2.0 ([#85](https://github.com/poweradmin/cert-manager-webhook-poweradmin/issues/85)) ([ebd12c2](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/ebd12c27f723f91d6c70c3423c5a64975350e443))
+* bump github.com/cert-manager/cert-manager from 1.20.3 to 1.21.0 ([#91](https://github.com/poweradmin/cert-manager-webhook-poweradmin/issues/91)) ([b981460](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/b98146081a8fd09054d736bb4024dabbf2afc97f))
+* bump github.com/google/cel-go from 0.28.1 to 0.29.2 ([25a926c](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/25a926c341af6051f7d2ee7316f445af7564954f))
+* bump github/codeql-action init/autobuild/analyze to v4.36.3 ([#89](https://github.com/poweradmin/cert-manager-webhook-poweradmin/issues/89)) ([4511f11](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/4511f117f38c40d38419d87b3f566f41779e4221))
+* bump github/codeql-action to v4.37.0 ([#97](https://github.com/poweradmin/cert-manager-webhook-poweradmin/issues/97)) ([93103a0](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/93103a02a56a931f0465771a6df9646654aa64a2))
+* bump github/codeql-action/upload-sarif from 4.36.2 to 4.36.3 ([#86](https://github.com/poweradmin/cert-manager-webhook-poweradmin/issues/86)) ([ce8b371](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/ce8b37137701339621d489db18d6267e9432a32e))
+* bump golang from 1.26.4-alpine to 1.26.5-alpine ([#90](https://github.com/poweradmin/cert-manager-webhook-poweradmin/issues/90)) ([477bb28](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/477bb28a2aa141cf8f8d2e06161ec2706195b5ff))
+* bump google.golang.org/grpc from 1.81.1 to 1.82.1 ([#99](https://github.com/poweradmin/cert-manager-webhook-poweradmin/issues/99)) ([7e227c0](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/7e227c06838c1e1cace0b69cd39b88204fa038c5))
 * bump the codeql-action group with 4 updates ([#101](https://github.com/poweradmin/cert-manager-webhook-poweradmin/issues/101)) ([eca7d06](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/eca7d06b1843fcbf0655a22b33a985f30e81d110))
 
 
