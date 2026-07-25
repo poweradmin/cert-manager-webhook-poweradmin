@@ -1,6 +1,6 @@
 apiVersion: v2
-appVersion: 0.2.2
+appVersion: 0.2.3
 description: A cert-manager webhook for PowerAdmin DNS provider
 name: cert-manager-webhook-poweradmin
 type: application
-version: 0.2.2
+version: 0.2.3
