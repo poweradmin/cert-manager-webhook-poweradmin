@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.2.3](https://github.com/poweradmin/cert-manager-webhook-poweradmin/compare/v0.2.2...v0.2.3) (2026-07-25)
+
+
+### Dependency Updates
+
+* bump actions/checkout from 7.0.0 to 7.0.1 ([#102](https://github.com/poweradmin/cert-manager-webhook-poweradmin/issues/102)) ([3d9e607](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/3d9e60713c3ddf1e1c4343e7283c54125ffe90f2))
+* bump actions/setup-go from 6.5.0 to 7.0.0 ([#103](https://github.com/poweradmin/cert-manager-webhook-poweradmin/issues/103)) ([9fb68af](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/9fb68af911c5f981f36f348291544e70428e07dc))
+* bump the codeql-action group with 4 updates ([#101](https://github.com/poweradmin/cert-manager-webhook-poweradmin/issues/101)) ([eca7d06](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/eca7d06b1843fcbf0655a22b33a985f30e81d110))
+
+
+### Documentation
+
+* extend compatibility table to Poweradmin 4.4.x ([a9da5b8](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/a9da5b8a96a00c60dede1c7411853c9340757aa1))
+
 ## [0.2.2](https://github.com/poweradmin/cert-manager-webhook-poweradmin/compare/v0.2.1...v0.2.2) (2026-07-10)
 
 
