@@ -47,6 +47,9 @@ jobs:
 
   trivy-image:
     name: Image Scan
+    # Snapshot image build takes ~8 min; PR deps are already covered by the
+    # filesystem scan, so image scanning runs only on main and the weekly cron.
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       contents: read
