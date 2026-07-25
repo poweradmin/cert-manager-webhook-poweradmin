@@ -30,8 +30,10 @@ updates:
       codeql-action:
         patterns:
           - "github/codeql-action*"
+    # "ci" type is hidden in release-please config — action bumps are CI
+    # plumbing, not user-facing; gomod/docker bumps stay in the changelog.
     commit-message:
-      prefix: "deps"
+      prefix: "ci"
   - package-ecosystem: "docker"
     directory: "/"
     schedule:
