@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.4](https://github.com/poweradmin/cert-manager-webhook-poweradmin/compare/v0.2.3...v0.2.4) (2026-08-03)
+
+
+### Dependency Updates
+
+* bump github.com/cert-manager/cert-manager from 1.21.0 to 1.21.1 ([#110](https://github.com/poweradmin/cert-manager-webhook-poweradmin/issues/110)) ([4d7b8d7](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/4d7b8d7c4452bceda7695be89cbb682f8b8e1707))
+* bump k8s.io/apiextensions-apiserver from 0.36.2 to 0.36.3 ([#106](https://github.com/poweradmin/cert-manager-webhook-poweradmin/issues/106)) ([bdf726e](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/bdf726e3b700c97d94510082df4fd98f293a200f))
+
 ## [0.2.3](https://github.com/poweradmin/cert-manager-webhook-poweradmin/compare/v0.2.2...v0.2.3) (2026-07-25)
 
 
