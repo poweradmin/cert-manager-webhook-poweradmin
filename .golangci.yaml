@@ -15,6 +15,11 @@ linters:
     - unconvert
     - unparam
     - noctx
+  settings:
+    # v2.12 goconst indexes _test.go files, which flags test-only constants for
+    # production code and reports table-test literals. Keep it to non-test code.
+    goconst:
+      ignore-tests: true
   exclusions:
     generated: lax
     presets:
