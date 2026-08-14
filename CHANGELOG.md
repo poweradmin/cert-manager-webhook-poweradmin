@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.5](https://github.com/poweradmin/cert-manager-webhook-poweradmin/compare/v0.2.4...v0.2.5) (2026-08-14)
+
+
+### Bug Fixes
+
+* update Go to 1.26.6 for six standard library vulnerabilities ([#118](https://github.com/poweradmin/cert-manager-webhook-poweradmin/issues/118)) ([0a9711d](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/0a9711d9c270ebeb4a807bc16a729343b5857466))
+
 ## [0.2.4](https://github.com/poweradmin/cert-manager-webhook-poweradmin/compare/v0.2.3...v0.2.4) (2026-08-03)
 
 
