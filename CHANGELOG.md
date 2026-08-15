@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.6](https://github.com/poweradmin/cert-manager-webhook-poweradmin/compare/v0.2.5...v0.2.6) (2026-08-15)
+
+
+### Bug Fixes
+
+* bump golang.org/x/mod to v0.40.0 for sumdb verification vulnerabilities ([#121](https://github.com/poweradmin/cert-manager-webhook-poweradmin/issues/121)) ([a3709e5](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/a3709e5ec86265adc20563971ade98a87b914c63))
+
 ## [0.2.5](https://github.com/poweradmin/cert-manager-webhook-poweradmin/compare/v0.2.4...v0.2.5) (2026-08-14)
 
 
