@@ -1,15 +1,13 @@
 ---
 name: Security
 
+# Scheduled-only, matching codeql.yaml: Trivy findings are about published
+# dependencies rather than the diff, so a weekly sweep of main catches the same
+# CVEs without adding latency to every PR. govulncheck still gates PRs.
 on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
   schedule:
     - cron: "0 6 * * 1"
+  workflow_dispatch:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -39,17 +37,14 @@ jobs:
           severity: CRITICAL,HIGH
 
       - name: Upload Trivy SARIF
-        uses: github/codeql-action/upload-sarif@5595ccaf912efad79be6eef63a5619ff05969be3 # v4
-        if: always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        uses: github/codeql-action/upload-sarif@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4
+        if: always()
         with:
           sarif_file: trivy-fs.sarif
           category: trivy-filesystem
 
   trivy-image:
     name: Image Scan
-    # Snapshot image build takes ~8 min; PR deps are already covered by the
-    # filesystem scan, so image scanning runs only on main and the weekly cron.
-    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -94,8 +89,8 @@ jobs:
           severity: CRITICAL,HIGH
 
       - name: Upload Trivy SARIF
-        uses: github/codeql-action/upload-sarif@5595ccaf912efad79be6eef63a5619ff05969be3 # v4
-        if: always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        uses: github/codeql-action/upload-sarif@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4
+        if: always()
         with:
           sarif_file: trivy-image.sarif
           category: trivy-image
