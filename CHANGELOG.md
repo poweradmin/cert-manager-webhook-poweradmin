@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.7](https://github.com/poweradmin/cert-manager-webhook-poweradmin/compare/v0.2.6...v0.2.7) (2026-08-24)
+
+
+### Dependency Updates
+
+* bump golang in the base-images group ([#126](https://github.com/poweradmin/cert-manager-webhook-poweradmin/issues/126)) ([2fbc071](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/2fbc07182f433ddf21592e00dfb8c629a34e6f76))
+* bump the kubernetes group with 4 updates ([#127](https://github.com/poweradmin/cert-manager-webhook-poweradmin/issues/127)) ([480020c](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/480020cf79c7d212ddbe4d8b513e60f00819ca8a))
+
 ## [0.2.6](https://github.com/poweradmin/cert-manager-webhook-poweradmin/compare/v0.2.5...v0.2.6) (2026-08-15)
 
 
