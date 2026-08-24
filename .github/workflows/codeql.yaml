@@ -1,15 +1,13 @@
 ---
 name: CodeQL
 
+# Scheduled-only: the Go analysis takes 3-5min while every other check
+# finishes under a minute, so it ran as pure latency on every PR and push.
+# The weekly scan against main still populates code-scanning alerts.
 on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
   schedule:
     - cron: "0 6 * * 1"
+  workflow_dispatch:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
