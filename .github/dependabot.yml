@@ -4,13 +4,13 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
-      day: "monday"
+      day: "saturday"
       time: "11:00"
       timezone: "Europe/Vilnius"
-    # Wait until a release has been public for 7 days before opening a PR,
+    # Wait until a release has been public for 3 days before opening a PR,
     # to reduce exposure to compromised/yanked supply-chain releases.
     cooldown:
-      default-days: 7
+      default-days: 3
     # The k8s.io/* and sigs.k8s.io/* families release in lockstep on a shared
     # version line, so one PR per module is pure noise — batch them together.
     # Other deps stay ungrouped to keep their own changelog entries.
@@ -27,11 +27,11 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
-      day: "monday"
+      day: "saturday"
       time: "12:00"
       timezone: "Europe/Vilnius"
     cooldown:
-      default-days: 7
+      default-days: 3
     # codeql-action init/autobuild/analyze must move in lockstep —
     # mixed versions fail with a config-version mismatch. Kept as its own group
     # (and excluded below) so a broad match can never split the trio apart.
@@ -60,11 +60,11 @@ updates:
           - "version-update:semver-minor"
     schedule:
       interval: "weekly"
-      day: "monday"
+      day: "saturday"
       time: "13:00"
       timezone: "Europe/Vilnius"
     cooldown:
-      default-days: 7
+      default-days: 3
     # Only the golang and alpine base images live here; they are always
     # reviewed together, so a single PR is easier than two.
     groups:
