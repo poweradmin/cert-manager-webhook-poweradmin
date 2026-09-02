@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.8](https://github.com/poweradmin/cert-manager-webhook-poweradmin/compare/v0.2.7...v0.2.8) (2026-09-02)
+
+
+### Dependency Updates
+
+* bump google.golang.org/grpc from 1.82.1 to 1.83.1 ([#131](https://github.com/poweradmin/cert-manager-webhook-poweradmin/issues/131)) ([2ed9682](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/2ed9682b47804fdb9c1aec17c8b742b498742b3f))
+
 ## [0.2.7](https://github.com/poweradmin/cert-manager-webhook-poweradmin/compare/v0.2.6...v0.2.7) (2026-08-24)
 
 
