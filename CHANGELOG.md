@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.11](https://github.com/poweradmin/cert-manager-webhook-poweradmin/compare/v0.2.10...v0.2.11) (2026-09-11)
+
+
+### Bug Fixes
+
+* bump golang.org/x/crypto to v0.56.0 for CVE-2026-56855 and CVE-2026-78662 ([#139](https://github.com/poweradmin/cert-manager-webhook-poweradmin/issues/139)) ([e3ffc77](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/e3ffc773ad5a0cb47e5b98e0d3ef065dbfd5860f))
+
 ## [0.2.10](https://github.com/poweradmin/cert-manager-webhook-poweradmin/compare/v0.2.9...v0.2.10) (2026-09-11)
 
 
