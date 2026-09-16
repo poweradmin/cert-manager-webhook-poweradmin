@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.12](https://github.com/poweradmin/cert-manager-webhook-poweradmin/compare/v0.2.11...v0.2.12) (2026-09-16)
+
+
+### Dependency Updates
+
+* bump github.com/cert-manager/cert-manager from 1.21.1 to 1.21.2 ([b5188e2](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/b5188e2cd662b27bd043e760bddbf5cee1fe1561))
+* bump go.etcd.io/etcd/client/pkg/v3 from 3.7.0 to 3.7.1 for GO-2026-6107 ([c414c77](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/c414c77f5d714998a506b144fe711ec8b62b83ed))
+
 ## [0.2.11](https://github.com/poweradmin/cert-manager-webhook-poweradmin/compare/v0.2.10...v0.2.11) (2026-09-11)
 
 
