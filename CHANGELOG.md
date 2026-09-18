@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.13](https://github.com/poweradmin/cert-manager-webhook-poweradmin/compare/v0.2.12...v0.2.13) (2026-09-18)
+
+
+### Dependency Updates
+
+* bump go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc ([#145](https://github.com/poweradmin/cert-manager-webhook-poweradmin/issues/145)) ([48e5f74](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/48e5f7421cdd2bae8bd71af192bd195f4e11c91f))
+
 ## [0.2.12](https://github.com/poweradmin/cert-manager-webhook-poweradmin/compare/v0.2.11...v0.2.12) (2026-09-16)
 
 
