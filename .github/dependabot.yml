@@ -11,14 +11,23 @@ updates:
     # to reduce exposure to compromised/yanked supply-chain releases.
     cooldown:
       default-days: 3
-    # The k8s.io/* and sigs.k8s.io/* families release in lockstep on a shared
-    # version line, so one PR per module is pure noise — batch them together.
-    # Other deps stay ungrouped to keep their own changelog entries.
+    # These families release in lockstep, so merging one per-module PR drags
+    # the siblings in via go mod tidy and leaves the rest as superseded
+    # conflicts. Batch each family; other deps keep their own changelog entry.
     groups:
       kubernetes:
         patterns:
           - "k8s.io/*"
           - "sigs.k8s.io/*"
+      opentelemetry:
+        patterns:
+          - "go.opentelemetry.io/*"
+      google:
+        patterns:
+          - "google.golang.org/*"
+      golang-x:
+        patterns:
+          - "golang.org/x/*"
     # "deps:" type routes commits into release-please's Dependency Updates
     # changelog section; "chore(deps):" would be hidden as type chore.
     commit-message:
