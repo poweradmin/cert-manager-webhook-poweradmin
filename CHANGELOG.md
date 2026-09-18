@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.14](https://github.com/poweradmin/cert-manager-webhook-poweradmin/compare/v0.2.13...v0.2.14) (2026-09-18)
+
+
+### Dependency Updates
+
+* bump the base-images group with 2 updates ([#147](https://github.com/poweradmin/cert-manager-webhook-poweradmin/issues/147)) ([965a4bd](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/965a4bd3fc84d03645e716352163756a38dd1bd6))
+
 ## [0.2.13](https://github.com/poweradmin/cert-manager-webhook-poweradmin/compare/v0.2.12...v0.2.13) (2026-09-18)
 
 
