@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.16](https://github.com/poweradmin/cert-manager-webhook-poweradmin/compare/v0.2.15...v0.2.16) (2026-10-06)
+
+
+### Dependency Updates
+
+* bump the kubernetes group with 4 updates ([#154](https://github.com/poweradmin/cert-manager-webhook-poweradmin/issues/154)) ([ce58b87](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/ce58b87f8a4566b3fd2c87048018b3b36fa91077))
+
 ## [0.2.15](https://github.com/poweradmin/cert-manager-webhook-poweradmin/compare/v0.2.14...v0.2.15) (2026-09-29)
 
 
