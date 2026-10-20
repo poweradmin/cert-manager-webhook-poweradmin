@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.2.17](https://github.com/poweradmin/cert-manager-webhook-poweradmin/compare/v0.2.16...v0.2.17) (2026-10-20)
+
+
+### Features
+
+* deprecate apiVersion v1 and report a clear error on 410 from Poweradmin 4.5.0 ([#162](https://github.com/poweradmin/cert-manager-webhook-poweradmin/issues/162)) ([3890c21](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/3890c2101265aaef294378d8fed148aae1c296cb))
+
+
+### Dependency Updates
+
+* update Go to 1.26.9 and golang.org/x/net to v0.60.0 ([#163](https://github.com/poweradmin/cert-manager-webhook-poweradmin/issues/163)) ([5cbf0a9](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/5cbf0a9163d7f9f3ee37e317eb68356bcb1aec34))
+
 ## [0.2.16](https://github.com/poweradmin/cert-manager-webhook-poweradmin/compare/v0.2.15...v0.2.16) (2026-10-06)
 
 
