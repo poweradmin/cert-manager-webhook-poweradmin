@@ -16,6 +16,7 @@ type poweradminDNSProviderConfig struct {
 	APIKeySecretRef cmmeta.SecretKeySelector `json:"apiKeySecretRef"`
 
 	// APIVersion selects the PowerAdmin API version: "v1" or "v2" (default: "v2").
+	// "v1" is deprecated and only works with Poweradmin below 4.5.0.
 	APIVersion string `json:"apiVersion,omitempty"`
 
 	// TTL for the TXT record in seconds (default: 120).

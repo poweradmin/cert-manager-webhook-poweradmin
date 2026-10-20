@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -55,6 +56,19 @@ func apiErrorf(op string, status int, body []byte) error {
 	return fmt.Errorf("%s: PowerAdmin API returned HTTP %d: %s", op, status, truncateBody(body))
 }
 
+// ErrAPIv1Removed is returned when Poweradmin answers 410 Gone to a v1 call:
+// Poweradmin 4.5.0 removed API v1 and every /api/v1/* endpoint answers 410.
+var ErrAPIv1Removed = errors.New(`PowerAdmin API v1 was removed in Poweradmin 4.5.0; set apiVersion to "v2" in the solver config`)
+
+// apiError builds the error for a non-success response, turning a 410 on a
+// v1 call into ErrAPIv1Removed instead of a generic HTTP error.
+func (c *client) apiError(op string, status int, body []byte) error {
+	if status == http.StatusGone && c.apiVersion == "v1" {
+		return fmt.Errorf("%s: %w", op, ErrAPIv1Removed)
+	}
+	return apiErrorf(op, status, body)
+}
+
 // v2ZonesData wraps the v2 zones response where data is {"zones": [...]}.
 type v2ZonesData struct {
 	Zones []Zone `json:"zones"`
@@ -88,7 +102,7 @@ type v1RecordData struct {
 type client struct {
 	serverURL  string
 	apiKey     string
-	apiVersion string // "v1" or "v2"
+	apiVersion string // "v1" (deprecated, Poweradmin < 4.5.0) or "v2"
 	pathPrefix string // "/api/v1" or "/api/v2"
 	httpClient *http.Client
 }
@@ -133,7 +147,7 @@ func (c *client) GetZones(ctx context.Context) ([]Zone, error) {
 		return nil, err
 	}
 	if status != http.StatusOK {
-		return nil, apiErrorf("list zones", status, body)
+		return nil, c.apiError("list zones", status, body)
 	}
 
 	var resp apiResponse
@@ -178,7 +192,7 @@ func (c *client) ListTXTRecords(ctx context.Context, zoneID int) ([]Record, erro
 		return nil, err
 	}
 	if status != http.StatusOK {
-		return nil, apiErrorf("list TXT records", status, body)
+		return nil, c.apiError("list TXT records", status, body)
 	}
 
 	var resp apiResponse
@@ -226,7 +240,7 @@ func (c *client) CreateTXTRecord(ctx context.Context, zoneID int, name, content 
 		return nil, err
 	}
 	if status != http.StatusCreated && status != http.StatusOK {
-		return nil, apiErrorf("create TXT record", status, body)
+		return nil, c.apiError("create TXT record", status, body)
 	}
 
 	var resp apiResponse
@@ -277,7 +291,7 @@ func (c *client) DeleteRecord(ctx context.Context, zoneID int, recordID RecordID
 		return nil
 	}
 	if status != http.StatusNoContent && status != http.StatusOK {
-		return apiErrorf("delete record", status, body)
+		return c.apiError("delete record", status, body)
 	}
 	return nil
 }
@@ -304,7 +318,8 @@ func NormalizeTXTContent(content string) string {
 }
 
 // NewClient creates a DNSProvider for the given API version.
-// apiVersion can be "v1", "v2", or "" (defaults to "v2").
+// apiVersion can be "v1", "v2", or "" (defaults to "v2"). "v1" is deprecated
+// and only works with Poweradmin below 4.5.0.
 func NewClient(serverURL, apiKey, apiVersion string, insecure bool) (DNSProvider, error) {
 	var pathPrefix string
 	switch apiVersion {
