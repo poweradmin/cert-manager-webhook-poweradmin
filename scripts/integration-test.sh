@@ -60,6 +60,9 @@ if [ "$HTTP_CODE" = "200" ]; then
   pass "API reachable (HTTP ${HTTP_CODE})"
 else
   fail "API returned HTTP ${HTTP_CODE}"
+  if [ "$HTTP_CODE" = "410" ] && [ "$API_VERSION" = "v1" ]; then
+    echo "API v1 was removed in Poweradmin 4.5.0; rerun with API_VERSION=v2."
+  fi
   echo "Cannot continue without API access."
   exit 1
 fi
@@ -174,17 +177,21 @@ else
   fail "TXT record still exists after deletion (count: ${REMAINING})"
 fi
 
-# 8. Test with v1 API (if testing v2)
+# 8. Check v1 API status (if testing v2)
+# Poweradmin below 4.5.0 still serves v1 (200); 4.5.0+ removed it and answers 410 Gone.
+# There is no cheap version probe, so either answer passes and anything else fails.
 if [ "$API_VERSION" = "v2" ]; then
-  echo "--- Test v1 API fallback ---"
+  echo "--- Check v1 API status ---"
   V1_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
     -H "X-API-Key: ${API_KEY}" \
     "${POWERADMIN_URL}/api/v1/zones")
 
   if [ "$V1_CODE" = "200" ]; then
-    pass "V1 API also reachable (HTTP ${V1_CODE})"
+    pass "V1 API reachable (HTTP 200, Poweradmin below 4.5.0)"
+  elif [ "$V1_CODE" = "410" ]; then
+    pass "V1 API removed (HTTP 410, Poweradmin 4.5.0+)"
   else
-    fail "V1 API returned HTTP ${V1_CODE}"
+    fail "V1 API returned HTTP ${V1_CODE} (expected 200 below 4.5.0 or 410 on 4.5.0+)"
   fi
 fi
 
