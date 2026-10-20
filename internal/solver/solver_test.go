@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/cert-manager/cert-manager/pkg/acme/webhook"
@@ -650,5 +651,32 @@ func TestConfigTTLOverride(t *testing.T) {
 	}
 	if cfg.TTL != 300 {
 		t.Errorf("TTL = %d, want 300", cfg.TTL)
+	}
+}
+
+func TestAPIVersionDeprecation(t *testing.T) {
+	tests := []struct {
+		apiVersion string
+		wantWarn   bool
+	}{
+		{"", false},
+		{"v2", false},
+		{"v1", true},
+	}
+	for _, tt := range tests {
+		t.Run("apiVersion="+tt.apiVersion, func(t *testing.T) {
+			msg := apiVersionDeprecation(poweradminDNSProviderConfig{ServerURL: "https://pa.example.com", APIVersion: tt.apiVersion})
+			if !tt.wantWarn {
+				if msg != "" {
+					t.Errorf("unexpected warning %q", msg)
+				}
+				return
+			}
+			for _, want := range []string{"deprecated", "4.5.0", `"v2"`, "https://pa.example.com"} {
+				if !strings.Contains(msg, want) {
+					t.Errorf("warning %q should mention %s", msg, want)
+				}
+			}
+		})
 	}
 }

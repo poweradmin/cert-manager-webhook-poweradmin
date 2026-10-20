@@ -10,6 +10,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"k8s.io/klog/v2"
 
 	"github.com/cert-manager/cert-manager-webhook-poweradmin/internal/poweradmin"
 )
@@ -68,6 +69,10 @@ func (s *PowerAdminSolver) resolveChallenge(ch *v1alpha1.ChallengeRequest) (*cha
 		return nil, fmt.Errorf("serverURL must be specified in solver config")
 	}
 
+	if msg := apiVersionDeprecation(cfg); msg != "" {
+		klog.Warning(msg)
+	}
+
 	apiKey, err := s.getAPIKey(cfg, ch.ResourceNamespace)
 	if err != nil {
 		return nil, err
@@ -105,6 +110,15 @@ func (s *PowerAdminSolver) resolveChallenge(ch *v1alpha1.ChallengeRequest) (*cha
 		txtKey:  txtKey,
 		records: records,
 	}, nil
+}
+
+// apiVersionDeprecation returns a warning when the config selects the
+// deprecated v1 API, or "" otherwise.
+func apiVersionDeprecation(cfg poweradminDNSProviderConfig) string {
+	if cfg.APIVersion != "v1" {
+		return ""
+	}
+	return fmt.Sprintf(`PowerAdmin apiVersion "v1" is deprecated and only works with Poweradmin below 4.5.0; set apiVersion to "v2" for %s`, cfg.ServerURL)
 }
 
 func (s *PowerAdminSolver) Present(ch *v1alpha1.ChallengeRequest) error {
