@@ -3,6 +3,7 @@ package poweradmin
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -867,5 +868,53 @@ func TestListTXTRecords_DisabledAsInt(t *testing.T) {
 	}
 	if records[0].Disabled != true {
 		t.Errorf("expected Disabled=true, got %v", records[0].Disabled)
+	}
+}
+
+func TestV1Gone_ReturnsRemovedError(t *testing.T) {
+	ops := []struct {
+		name string
+		call func(context.Context, DNSProvider) error
+	}{
+		{"GetZones", func(ctx context.Context, c DNSProvider) error { _, err := c.GetZones(ctx); return err }},
+		{"ListTXTRecords", func(ctx context.Context, c DNSProvider) error { _, err := c.ListTXTRecords(ctx, 1); return err }},
+		{"CreateTXTRecord", func(ctx context.Context, c DNSProvider) error {
+			_, err := c.CreateTXTRecord(ctx, 1, "_acme-challenge.example.com", "token", 120)
+			return err
+		}},
+		// 410 must not be swallowed like the idempotent 404 delete path.
+		{"DeleteRecord", func(ctx context.Context, c DNSProvider) error { return c.DeleteRecord(ctx, 1, "1") }},
+	}
+
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusGone)
+		_, _ = w.Write([]byte(`{"success":false,"message":"API v1 has been removed"}`))
+	}
+
+	for _, op := range ops {
+		t.Run("v1/"+op.name, func(t *testing.T) {
+			_, client := setupTestServerWithVersion(t, handler, "v1")
+			err := op.call(context.Background(), client)
+			if !errors.Is(err, ErrAPIv1Removed) {
+				t.Fatalf("expected ErrAPIv1Removed, got %v", err)
+			}
+			if !strings.Contains(err.Error(), `"v2"`) {
+				t.Errorf("error should tell the user to switch to v2, got %q", err.Error())
+			}
+		})
+		t.Run("v2/"+op.name, func(t *testing.T) {
+			_, client := setupTestServerWithVersion(t, handler, "v2")
+			err := op.call(context.Background(), client)
+			if err == nil {
+				t.Fatal("expected error for 410 response")
+			}
+			if errors.Is(err, ErrAPIv1Removed) {
+				t.Errorf("410 on v2 must not be reported as v1 removal, got %q", err.Error())
+			}
+			if !strings.Contains(err.Error(), "HTTP 410") {
+				t.Errorf("expected generic HTTP 410 error, got %q", err.Error())
+			}
+		})
 	}
 }
