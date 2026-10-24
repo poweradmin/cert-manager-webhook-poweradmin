@@ -78,6 +78,8 @@ jobs:
         env:
           CI_COMMIT_TIMESTAMP: ${{ github.event.repository.updated_at }}
           CI_COMMIT_SHA: ${{ github.sha }}
+          # ubuntu-26.04 mounts /tmp as a size-capped tmpfs; keep Go build files on disk
+          GOTMPDIR: ${{ runner.temp }}
 
       - name: Run Trivy image scan
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # 0.36.0
