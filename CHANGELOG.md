@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.18](https://github.com/poweradmin/cert-manager-webhook-poweradmin/compare/v0.2.17...v0.2.18) (2026-10-24)
+
+
+### Dependency Updates
+
+* update Go to 1.26.10 for GO-2026-6809 ([#166](https://github.com/poweradmin/cert-manager-webhook-poweradmin/issues/166)) ([eb931f5](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/eb931f556fa27595545a1067b017ac2d63d6680f))
+
 ## [0.2.17](https://github.com/poweradmin/cert-manager-webhook-poweradmin/compare/v0.2.16...v0.2.17) (2026-10-20)
 
 
