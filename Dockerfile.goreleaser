@@ -1,4 +1,4 @@
-FROM gcr.io/distroless/static-debian12:nonroot
+FROM gcr.io/distroless/static-debian13:nonroot
 USER 20000:20000
 ARG TARGETPLATFORM
 COPY --chmod=555 ${TARGETPLATFORM}/cert-manager-webhook-poweradmin /usr/local/bin/
