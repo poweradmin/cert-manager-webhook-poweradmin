@@ -38,18 +38,6 @@ func writeV2ZonesResponse(w http.ResponseWriter, zones []Zone) {
 	_ = json.NewEncoder(w).Encode(resp)
 }
 
-// writeV1ZonesResponse writes a wrapped v1 zones response.
-func writeV1ZonesResponse(w http.ResponseWriter, zones []Zone) {
-	w.Header().Set("Content-Type", "application/json")
-	zonesData, _ := json.Marshal(zones)
-	resp := apiResponse{
-		Success: true,
-		Data:    zonesData,
-		Message: "Zones retrieved successfully",
-	}
-	_ = json.NewEncoder(w).Encode(resp)
-}
-
 // writeV2RecordsResponse writes a wrapped v2 records response (4.3.0+: {"records": [...]}).
 func writeV2RecordsResponse(w http.ResponseWriter, records []Record) {
 	w.Header().Set("Content-Type", "application/json")
@@ -57,18 +45,6 @@ func writeV2RecordsResponse(w http.ResponseWriter, records []Record) {
 	resp := apiResponse{
 		Success: true,
 		Data:    json.RawMessage(`{"records":` + string(recordsData) + `}`),
-		Message: "Records retrieved successfully",
-	}
-	_ = json.NewEncoder(w).Encode(resp)
-}
-
-// writeV1RecordsResponse writes a flat v1 records response (data is [...]).
-func writeV1RecordsResponse(w http.ResponseWriter, records []Record) {
-	w.Header().Set("Content-Type", "application/json")
-	recordsData, _ := json.Marshal(records)
-	resp := apiResponse{
-		Success: true,
-		Data:    recordsData,
 		Message: "Records retrieved successfully",
 	}
 	_ = json.NewEncoder(w).Encode(resp)
@@ -99,29 +75,6 @@ func writeV2CreateRecordResponse(w http.ResponseWriter, record Record) {
 	_ = json.NewEncoder(w).Encode(resp)
 }
 
-// writeV1CreateRecordResponse writes a wrapped v1 create-record response
-// using "record_id" instead of "id", matching the real PowerAdmin v1 API.
-func writeV1CreateRecordResponse(w http.ResponseWriter, record Record) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	v1data := v1RecordData{
-		RecordID: record.ID,
-		Name:     record.Name,
-		Type:     record.Type,
-		Content:  record.Content,
-		TTL:      record.TTL,
-		Priority: record.Priority,
-		Disabled: record.Disabled,
-	}
-	recordData, _ := json.Marshal(v1data)
-	resp := apiResponse{
-		Success: true,
-		Data:    recordData,
-		Message: "Record created successfully",
-	}
-	_ = json.NewEncoder(w).Encode(resp)
-}
-
 func TestNewClient(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -130,7 +83,7 @@ func TestNewClient(t *testing.T) {
 	}{
 		{"default (empty) uses v2", "", false},
 		{"explicit v2", "v2", false},
-		{"explicit v1", "v1", false},
+		{"removed v1", "v1", true},
 		{"unsupported version", "v3", true},
 	}
 
@@ -141,6 +94,18 @@ func TestNewClient(t *testing.T) {
 				t.Errorf("NewClient() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
+	}
+}
+
+// Configs still carrying apiVersion "v1" must fail with a pointer to v2,
+// not a generic "unsupported version" error.
+func TestNewClient_V1Removed(t *testing.T) {
+	_, err := NewClient("http://localhost", "key", "v1", false)
+	if !errors.Is(err, ErrAPIv1Removed) {
+		t.Fatalf("expected ErrAPIv1Removed, got %v", err)
+	}
+	if !strings.Contains(err.Error(), `"v2"`) {
+		t.Errorf("error should tell the user to switch to v2, got %q", err.Error())
 	}
 }
 
@@ -364,56 +329,6 @@ func TestRecordID_UnmarshalJSON(t *testing.T) {
 				t.Errorf("UnmarshalJSON(%s) = %s, want %s", tt.input, id, tt.want)
 			}
 		})
-	}
-}
-
-func TestV1Paths(t *testing.T) {
-	var receivedPath string
-
-	handler := func(w http.ResponseWriter, r *http.Request) {
-		receivedPath = r.URL.Path
-		w.Header().Set("Content-Type", "application/json")
-		switch {
-		case r.URL.Path == "/api/v1/zones":
-			writeV1ZonesResponse(w, []Zone{{ID: 1, Name: "example.com"}})
-		case r.URL.Path == "/api/v1/zones/1/records" && r.Method == http.MethodGet:
-			writeV1RecordsResponse(w, []Record{})
-		case r.URL.Path == "/api/v1/zones/1/records" && r.Method == http.MethodPost:
-			writeV1CreateRecordResponse(w, Record{ID: "1"})
-		case r.URL.Path == "/api/v1/zones/1/records/1" && r.Method == http.MethodDelete:
-			w.WriteHeader(http.StatusNoContent)
-		default:
-			w.WriteHeader(http.StatusNotFound)
-		}
-	}
-
-	_, client := setupTestServerWithVersion(t, handler, "v1")
-	ctx := context.Background()
-
-	_, err := client.GetZones(ctx)
-	if err != nil {
-		t.Fatalf("V1 GetZones() error = %v", err)
-	}
-	if receivedPath != "/api/v1/zones" {
-		t.Errorf("V1 GetZones() path = %s, want /api/v1/zones", receivedPath)
-	}
-
-	_, err = client.ListTXTRecords(ctx, 1)
-	if err != nil {
-		t.Fatalf("V1 ListTXTRecords() error = %v", err)
-	}
-
-	rec, err := client.CreateTXTRecord(ctx, 1, "test", "\"val\"", 120)
-	if err != nil {
-		t.Fatalf("V1 CreateTXTRecord() error = %v", err)
-	}
-	if rec.ID != "1" {
-		t.Errorf("V1 CreateTXTRecord() record.ID = %s, want 1 (from record_id)", rec.ID)
-	}
-
-	err = client.DeleteRecord(ctx, 1, "1")
-	if err != nil {
-		t.Fatalf("V1 DeleteRecord() error = %v", err)
 	}
 }
 
@@ -871,7 +786,8 @@ func TestListTXTRecords_DisabledAsInt(t *testing.T) {
 	}
 }
 
-func TestV1Gone_ReturnsRemovedError(t *testing.T) {
+// 410 is a plain API error on v2, not swallowed like the idempotent 404 delete path.
+func TestGone_ReturnsHTTPError(t *testing.T) {
 	ops := []struct {
 		name string
 		call func(context.Context, DNSProvider) error
@@ -882,28 +798,17 @@ func TestV1Gone_ReturnsRemovedError(t *testing.T) {
 			_, err := c.CreateTXTRecord(ctx, 1, "_acme-challenge.example.com", "token", 120)
 			return err
 		}},
-		// 410 must not be swallowed like the idempotent 404 delete path.
 		{"DeleteRecord", func(ctx context.Context, c DNSProvider) error { return c.DeleteRecord(ctx, 1, "1") }},
 	}
 
 	handler := func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusGone)
-		_, _ = w.Write([]byte(`{"success":false,"message":"API v1 has been removed"}`))
+		_, _ = w.Write([]byte(`{"success":false,"message":"gone"}`))
 	}
 
 	for _, op := range ops {
-		t.Run("v1/"+op.name, func(t *testing.T) {
-			_, client := setupTestServerWithVersion(t, handler, "v1")
-			err := op.call(context.Background(), client)
-			if !errors.Is(err, ErrAPIv1Removed) {
-				t.Fatalf("expected ErrAPIv1Removed, got %v", err)
-			}
-			if !strings.Contains(err.Error(), `"v2"`) {
-				t.Errorf("error should tell the user to switch to v2, got %q", err.Error())
-			}
-		})
-		t.Run("v2/"+op.name, func(t *testing.T) {
+		t.Run(op.name, func(t *testing.T) {
 			_, client := setupTestServerWithVersion(t, handler, "v2")
 			err := op.call(context.Background(), client)
 			if err == nil {

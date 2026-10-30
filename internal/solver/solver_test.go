@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strconv"
-	"strings"
 	"testing"
 
 	"github.com/cert-manager/cert-manager/pkg/acme/webhook"
@@ -654,29 +653,17 @@ func TestConfigTTLOverride(t *testing.T) {
 	}
 }
 
-func TestAPIVersionDeprecation(t *testing.T) {
-	tests := []struct {
-		apiVersion string
-		wantWarn   bool
-	}{
-		{"", false},
-		{"v2", false},
-		{"v1", true},
+// apiVersion "v1" must fail through the real client constructor, so upgraded
+// ClusterIssuers still set to v1 get a clear switch-to-v2 error.
+func TestPresent_APIv1Removed(t *testing.T) {
+	s := newSolverWithMock(nil)
+	ch := newChallenge("test-token")
+	ch.Config = &extapi.JSON{Raw: []byte(`{"serverURL":"https://pa.example.com","apiKeySecretRef":{"name":"poweradmin-api-key","key":"api-key"},"apiVersion":"v1"}`)}
+
+	if err := s.Present(ch); !errors.Is(err, poweradmin.ErrAPIv1Removed) {
+		t.Fatalf("Present() error = %v, want ErrAPIv1Removed", err)
 	}
-	for _, tt := range tests {
-		t.Run("apiVersion="+tt.apiVersion, func(t *testing.T) {
-			msg := apiVersionDeprecation(poweradminDNSProviderConfig{ServerURL: "https://pa.example.com", APIVersion: tt.apiVersion})
-			if !tt.wantWarn {
-				if msg != "" {
-					t.Errorf("unexpected warning %q", msg)
-				}
-				return
-			}
-			for _, want := range []string{"deprecated", "4.5.0", `"v2"`, "https://pa.example.com"} {
-				if !strings.Contains(msg, want) {
-					t.Errorf("warning %q should mention %s", msg, want)
-				}
-			}
-		})
+	if err := s.CleanUp(ch); !errors.Is(err, poweradmin.ErrAPIv1Removed) {
+		t.Fatalf("CleanUp() error = %v, want ErrAPIv1Removed", err)
 	}
 }

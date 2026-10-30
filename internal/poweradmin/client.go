@@ -56,18 +56,9 @@ func apiErrorf(op string, status int, body []byte) error {
 	return fmt.Errorf("%s: PowerAdmin API returned HTTP %d: %s", op, status, truncateBody(body))
 }
 
-// ErrAPIv1Removed is returned when Poweradmin answers 410 Gone to a v1 call:
-// Poweradmin 4.5.0 removed API v1 and every /api/v1/* endpoint answers 410.
-var ErrAPIv1Removed = errors.New(`PowerAdmin API v1 was removed in Poweradmin 4.5.0; set apiVersion to "v2" in the solver config`)
-
-// apiError builds the error for a non-success response, turning a 410 on a
-// v1 call into ErrAPIv1Removed instead of a generic HTTP error.
-func (c *client) apiError(op string, status int, body []byte) error {
-	if status == http.StatusGone && c.apiVersion == "v1" {
-		return fmt.Errorf("%s: %w", op, ErrAPIv1Removed)
-	}
-	return apiErrorf(op, status, body)
-}
+// ErrAPIv1Removed is returned for apiVersion "v1": Poweradmin 4.5.0 removed
+// API v1 and this webhook dropped it in 0.3.0.
+var ErrAPIv1Removed = errors.New(`PowerAdmin API v1 is no longer supported (removed in Poweradmin 4.5.0 and in this webhook 0.3.0); set apiVersion to "v2" in the solver config`)
 
 // v2ZonesData wraps the v2 zones response where data is {"zones": [...]}.
 type v2ZonesData struct {
@@ -87,23 +78,13 @@ type v2RecordData struct {
 	Record *Record `json:"record"`
 }
 
-// v1RecordData maps the v1 create-record response where the ID field is "record_id".
-type v1RecordData struct {
-	RecordID RecordID `json:"record_id"`
-	Name     string   `json:"name"`
-	Type     string   `json:"type"`
-	Content  string   `json:"content"`
-	TTL      int      `json:"ttl"`
-	Priority int      `json:"priority"`
-	Disabled FlexBool `json:"disabled"`
-}
+// pathPrefix is the PowerAdmin v2 API root that every request is sent under.
+const pathPrefix = "/api/v2"
 
-// client implements DNSProvider for any PowerAdmin API version.
+// client implements DNSProvider for the PowerAdmin v2 API.
 type client struct {
 	serverURL  string
 	apiKey     string
-	apiVersion string // "v1" (deprecated, Poweradmin < 4.5.0) or "v2"
-	pathPrefix string // "/api/v1" or "/api/v2"
 	httpClient *http.Client
 }
 
@@ -117,7 +98,7 @@ func (c *client) doRequest(ctx context.Context, method, path string, body interf
 		bodyReader = bytes.NewReader(data)
 	}
 
-	url := c.serverURL + c.pathPrefix + path
+	url := c.serverURL + pathPrefix + path
 	req, err := http.NewRequestWithContext(ctx, method, url, bodyReader)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to create request: %w", err)
@@ -147,7 +128,7 @@ func (c *client) GetZones(ctx context.Context) ([]Zone, error) {
 		return nil, err
 	}
 	if status != http.StatusOK {
-		return nil, c.apiError("list zones", status, body)
+		return nil, apiErrorf("list zones", status, body)
 	}
 
 	var resp apiResponse
@@ -155,21 +136,12 @@ func (c *client) GetZones(ctx context.Context) ([]Zone, error) {
 		return nil, fmt.Errorf("failed to parse zones response: %w", err)
 	}
 
-	var zones []Zone
-	if c.apiVersion == "v2" {
-		// V2: data is {"zones": [...]}
-		var wrapper v2ZonesData
-		if err := json.Unmarshal(resp.Data, &wrapper); err != nil {
-			return nil, fmt.Errorf("failed to parse v2 zones data: %w", err)
-		}
-		zones = wrapper.Zones
-	} else {
-		// V1: data is [...]
-		if err := json.Unmarshal(resp.Data, &zones); err != nil {
-			return nil, fmt.Errorf("failed to parse v1 zones data: %w", err)
-		}
+	// data is {"zones": [...]}
+	var wrapper v2ZonesData
+	if err := json.Unmarshal(resp.Data, &wrapper); err != nil {
+		return nil, fmt.Errorf("failed to parse v2 zones data: %w", err)
 	}
-	return zones, nil
+	return wrapper.Zones, nil
 }
 
 func (c *client) GetZoneByName(ctx context.Context, name string) (*Zone, error) {
@@ -192,7 +164,7 @@ func (c *client) ListTXTRecords(ctx context.Context, zoneID int) ([]Record, erro
 		return nil, err
 	}
 	if status != http.StatusOK {
-		return nil, c.apiError("list TXT records", status, body)
+		return nil, apiErrorf("list TXT records", status, body)
 	}
 
 	var resp apiResponse
@@ -200,21 +172,14 @@ func (c *client) ListTXTRecords(ctx context.Context, zoneID int) ([]Record, erro
 		return nil, fmt.Errorf("failed to parse records response: %w", err)
 	}
 
+	// 4.3.0+: data is {"records": [...]}
+	// 4.2.x:  data is [...]
 	var records []Record
-	if c.apiVersion == "v2" {
-		// V2 4.3.0+: data is {"records": [...]}
-		// V2 4.2.x:  data is [...]
-		var wrapper v2RecordsData
-		if err := json.Unmarshal(resp.Data, &wrapper); err == nil && wrapper.Records != nil {
-			records = wrapper.Records
-		} else if err := json.Unmarshal(resp.Data, &records); err != nil {
-			return nil, fmt.Errorf("failed to parse v2 records data: %w", err)
-		}
-	} else {
-		// V1: data is [...]
-		if err := json.Unmarshal(resp.Data, &records); err != nil {
-			return nil, fmt.Errorf("failed to parse v1 records data: %w", err)
-		}
+	var wrapper v2RecordsData
+	if err := json.Unmarshal(resp.Data, &wrapper); err == nil && wrapper.Records != nil {
+		records = wrapper.Records
+	} else if err := json.Unmarshal(resp.Data, &records); err != nil {
+		return nil, fmt.Errorf("failed to parse v2 records data: %w", err)
 	}
 	return records, nil
 }
@@ -240,7 +205,7 @@ func (c *client) CreateTXTRecord(ctx context.Context, zoneID int, name, content 
 		return nil, err
 	}
 	if status != http.StatusCreated && status != http.StatusOK {
-		return nil, c.apiError("create TXT record", status, body)
+		return nil, apiErrorf("create TXT record", status, body)
 	}
 
 	var resp apiResponse
@@ -248,34 +213,15 @@ func (c *client) CreateTXTRecord(ctx context.Context, zoneID int, name, content 
 		return nil, fmt.Errorf("failed to parse record response: %w", err)
 	}
 
-	var record Record
-	if c.apiVersion == "v2" {
-		// V2: data is {"record": {...}}
-		var wrapper v2RecordData
-		if err := json.Unmarshal(resp.Data, &wrapper); err != nil {
-			return nil, fmt.Errorf("failed to parse v2 record data: %w", err)
-		}
-		if wrapper.Record == nil {
-			return nil, fmt.Errorf("create TXT record: response contained no record object: %s", truncateBody(resp.Data))
-		}
-		record = *wrapper.Record
-	} else {
-		// V1: data is flat object with "record_id" instead of "id"
-		var v1data v1RecordData
-		if err := json.Unmarshal(resp.Data, &v1data); err != nil {
-			return nil, fmt.Errorf("failed to parse v1 record data: %w", err)
-		}
-		record = Record{
-			ID:       v1data.RecordID,
-			Name:     v1data.Name,
-			Type:     v1data.Type,
-			Content:  v1data.Content,
-			TTL:      v1data.TTL,
-			Priority: v1data.Priority,
-			Disabled: v1data.Disabled,
-		}
+	// data is {"record": {...}}
+	var wrapper v2RecordData
+	if err := json.Unmarshal(resp.Data, &wrapper); err != nil {
+		return nil, fmt.Errorf("failed to parse v2 record data: %w", err)
 	}
-	return &record, nil
+	if wrapper.Record == nil {
+		return nil, fmt.Errorf("create TXT record: response contained no record object: %s", truncateBody(resp.Data))
+	}
+	return wrapper.Record, nil
 }
 
 func (c *client) DeleteRecord(ctx context.Context, zoneID int, recordID RecordID) error {
@@ -291,7 +237,7 @@ func (c *client) DeleteRecord(ctx context.Context, zoneID int, recordID RecordID
 		return nil
 	}
 	if status != http.StatusNoContent && status != http.StatusOK {
-		return c.apiError("delete record", status, body)
+		return apiErrorf("delete record", status, body)
 	}
 	return nil
 }
@@ -317,18 +263,15 @@ func NormalizeTXTContent(content string) string {
 	return trimOneQuotePair(content)
 }
 
-// NewClient creates a DNSProvider for the given API version.
-// apiVersion can be "v1", "v2", or "" (defaults to "v2"). "v1" is deprecated
-// and only works with Poweradmin below 4.5.0.
+// NewClient creates a DNSProvider for the PowerAdmin v2 API.
+// apiVersion can be "v2" or "" (defaults to "v2"); "v1" returns ErrAPIv1Removed.
 func NewClient(serverURL, apiKey, apiVersion string, insecure bool) (DNSProvider, error) {
-	var pathPrefix string
 	switch apiVersion {
-	case "v1":
-		pathPrefix = "/api/v1"
 	case "", "v2":
-		pathPrefix = "/api/v2"
+	case "v1":
+		return nil, ErrAPIv1Removed
 	default:
-		return nil, fmt.Errorf("unsupported PowerAdmin API version: %q (supported: v1, v2)", apiVersion)
+		return nil, fmt.Errorf("unsupported PowerAdmin API version: %q (supported: v2)", apiVersion)
 	}
 
 	httpClient := &http.Client{
@@ -350,16 +293,9 @@ func NewClient(serverURL, apiKey, apiVersion string, insecure bool) (DNSProvider
 		httpClient.Transport = transport
 	}
 
-	version := apiVersion
-	if version == "" {
-		version = "v2"
-	}
-
 	return &client{
 		serverURL:  strings.TrimRight(serverURL, "/"),
 		apiKey:     apiKey,
-		apiVersion: version,
-		pathPrefix: pathPrefix,
 		httpClient: httpClient,
 	}, nil
 }

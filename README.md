@@ -12,13 +12,14 @@ A [cert-manager](https://cert-manager.io/) webhook for [PowerAdmin](https://www.
 
 | Webhook Version | Poweradmin Version                          | cert-manager | Kubernetes |
 |-----------------|---------------------------------------------|--------------|------------|
-| 0.2.0+          | 4.1.0 - 4.5.x (v2 API since 4.2.0, v1 API below 4.5.0 only), 4.3.0+ incl. PowerDNS API backend | >= 1.0 | >= 1.25 |
+| 0.3.0+          | 4.2.0+ (v2 API only), 4.3.0+ incl. PowerDNS API backend | >= 1.0 | >= 1.25 |
+| 0.2.0–0.2.x     | 4.1.0 - 4.5.x (v2 API since 4.2.0, v1 API below 4.5.0 only), 4.3.0+ incl. PowerDNS API backend | >= 1.0 | >= 1.25 |
 | 0.1.6+          | 4.1.0 - 4.4.x (v1 API), 4.2.0+ (v2 API), 4.3.0+ | >= 1.0       | >= 1.25    |
 | 0.1.0–0.1.5     | 4.1.0 - 4.4.x (v1 API), 4.2.0+ (v2 API)    | >= 1.0       | >= 1.25    |
 
-> **API v1 is deprecated.** Poweradmin 4.5.0 removed API v1 (every `/api/v1/*`
-> request answers `410 Gone`). Use `apiVersion: "v2"` (the default); `"v1"` only
-> works with Poweradmin below 4.5.0 and will be dropped in a future major release.
+> **API v1 support was removed in 0.3.0**, following its removal in Poweradmin
+> 4.5.0. Set `apiVersion: "v2"` (the default) or drop the field; `"v1"` now fails
+> with an error. Poweradmin 4.1.x (v1 only) needs webhook 0.2.x.
 
 ## Prerequisites
 
@@ -108,7 +109,7 @@ spec:
             apiKeySecretRef:
               name: poweradmin-api-key
               key: api-key
-            apiVersion: "v2"     # optional, default "v2"; "v1" is deprecated (Poweradmin < 4.5.0 only)
+            apiVersion: "v2"     # optional, default "v2" (the only supported value)
             ttl: 120             # optional, default 120
             insecure: false      # optional, default false
 ```
@@ -138,7 +139,7 @@ spec:
 | `serverURL`            | Yes      | -       | Base URL of the PowerAdmin instance       |
 | `apiKeySecretRef.name` | Yes      | -       | Name of the Secret containing the API key |
 | `apiKeySecretRef.key`  | Yes      | -       | Key within the Secret                     |
-| `apiVersion`           | No       | `"v2"`  | PowerAdmin API version (`"v2"`, or deprecated `"v1"` for Poweradmin below 4.5.0) |
+| `apiVersion`           | No       | `"v2"`  | PowerAdmin API version; only `"v2"` is supported |
 | `ttl`                  | No       | `120`   | TTL for TXT records in seconds            |
 | `insecure`             | No       | `false` | Skip TLS verification for PowerAdmin API  |
 
