@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.3.0](https://github.com/poweradmin/cert-manager-webhook-poweradmin/compare/v0.2.20...v0.3.0) (2026-10-31)
+
+
+### ⚠ BREAKING CHANGES
+
+* drop PowerAdmin API v1 support ([#174](https://github.com/poweradmin/cert-manager-webhook-poweradmin/issues/174))
+
+### Features
+
+* drop PowerAdmin API v1 support ([#174](https://github.com/poweradmin/cert-manager-webhook-poweradmin/issues/174)) ([8a70804](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/8a70804197a53bf811f15b92b63efab77d6f36e9))
+
 ## [0.2.20](https://github.com/poweradmin/cert-manager-webhook-poweradmin/compare/v0.2.19...v0.2.20) (2026-10-31)
 
 
