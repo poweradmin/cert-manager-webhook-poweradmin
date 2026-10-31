@@ -143,6 +143,14 @@ spec:
 | `ttl`                  | No       | `120`   | TTL for TXT records in seconds            |
 | `insecure`             | No       | `false` | Skip TLS verification for PowerAdmin API  |
 
+## Upgrading to 0.3.x
+
+- **API v1 is no longer supported.** Remove `apiVersion: "v1"` from your
+  Issuer/ClusterIssuer solver config or set it to `"v2"`; with `"v1"` every
+  challenge fails with an error telling you to switch. Requires Poweradmin
+  4.2.0 or newer. Poweradmin 4.1.x only has API v1, so stay on webhook 0.2.x
+  until you upgrade Poweradmin.
+
 ## Upgrading to 0.2.x
 
 - **Secret RBAC is now namespace-scoped.** The webhook previously could read
