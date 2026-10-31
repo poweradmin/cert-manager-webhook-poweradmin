@@ -63,7 +63,7 @@ spec:
             apiKeySecretRef:
               name: poweradmin-api-key
               key: api-key
-            apiVersion: "v2"     # optional, default "v2"; "v1" is deprecated (Poweradmin < 4.5.0 only)
+            apiVersion: "v2"     # optional, default "v2" (the only supported value)
             ttl: 120             # optional, default 120
             insecure: false      # optional, default false
 ```
@@ -111,7 +111,7 @@ spec:
 | `serverURL` | Yes | - | Base URL of the PowerAdmin instance |
 | `apiKeySecretRef.name` | Yes | - | Name of the Secret containing the API key |
 | `apiKeySecretRef.key` | Yes | - | Key within the Secret |
-| `apiVersion` | No | `"v2"` | PowerAdmin API version (`"v2"`, or deprecated `"v1"` for Poweradmin below 4.5.0) |
+| `apiVersion` | No | `"v2"` | PowerAdmin API version; only `"v2"` is supported |
 | `ttl` | No | `120` | TTL for TXT records in seconds |
 | `insecure` | No | `false` | Skip TLS verification for PowerAdmin API |
 

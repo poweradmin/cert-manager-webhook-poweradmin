@@ -21,16 +21,10 @@ set -euo pipefail
 POWERADMIN_URL="${1:-http://localhost:8080}"
 API_KEY="${2:-test-api-key-for-automated-testing-12345}"
 ZONE_NAME="${3:-admin-zone.example.com}"
-API_VERSION="${API_VERSION:-v2}"
 
 RECORD_NAME="_acme-test.${ZONE_NAME}"
 RECORD_VALUE="integration-test-$(date +%s)"
-# V1 API requires TXT content to be enclosed in quotes; V2 accepts bare values
-if [ "$API_VERSION" = "v1" ]; then
-  RECORD_CONTENT="\"\\\"${RECORD_VALUE}\\\"\""
-else
-  RECORD_CONTENT="\"${RECORD_VALUE}\""
-fi
+RECORD_CONTENT="\"${RECORD_VALUE}\""
 
 PASS=0
 FAIL=0
@@ -46,7 +40,6 @@ fi
 
 echo "=== cert-manager-webhook-poweradmin integration test ==="
 echo "PowerAdmin URL: ${POWERADMIN_URL}"
-echo "API Version:    ${API_VERSION}"
 echo "Zone:           ${ZONE_NAME}"
 echo ""
 
@@ -54,32 +47,22 @@ echo ""
 echo "--- Test API connectivity ---"
 HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
   -H "X-API-Key: ${API_KEY}" \
-  "${POWERADMIN_URL}/api/${API_VERSION}/zones")
+  "${POWERADMIN_URL}/api/v2/zones")
 
 if [ "$HTTP_CODE" = "200" ]; then
   pass "API reachable (HTTP ${HTTP_CODE})"
 else
   fail "API returned HTTP ${HTTP_CODE}"
-  if [ "$HTTP_CODE" = "410" ] && [ "$API_VERSION" = "v1" ]; then
-    echo "API v1 was removed in Poweradmin 4.5.0; rerun with API_VERSION=v2."
-  fi
   echo "Cannot continue without API access."
   exit 1
 fi
 
 # 2. Find zone ID
 echo "--- Find zone ---"
-if [ "$API_VERSION" = "v2" ]; then
-  ZONE_ID=$(curl -s \
-    -H "X-API-Key: ${API_KEY}" \
-    "${POWERADMIN_URL}/api/${API_VERSION}/zones" | \
-    jq -r --arg name "$ZONE_NAME" '.data.zones[] | select(.name == $name) | .id // empty')
-else
-  ZONE_ID=$(curl -s \
-    -H "X-API-Key: ${API_KEY}" \
-    "${POWERADMIN_URL}/api/${API_VERSION}/zones" | \
-    jq -r --arg name "$ZONE_NAME" '.data[] | select(.name == $name) | .id // empty')
-fi
+ZONE_ID=$(curl -s \
+  -H "X-API-Key: ${API_KEY}" \
+  "${POWERADMIN_URL}/api/v2/zones" | \
+  jq -r --arg name "$ZONE_NAME" '.data.zones[] | select(.name == $name) | .id // empty')
 
 if [ -n "$ZONE_ID" ]; then
   pass "Found zone '${ZONE_NAME}' with ID ${ZONE_ID}"
@@ -95,7 +78,7 @@ CREATE_RESPONSE=$(curl -s -w "\n%{http_code}" \
   -H "X-API-Key: ${API_KEY}" \
   -H "Content-Type: application/json" \
   -d "{\"name\":\"${RECORD_NAME}\",\"type\":\"TXT\",\"content\":${RECORD_CONTENT},\"ttl\":120,\"priority\":0,\"disabled\":0}" \
-  "${POWERADMIN_URL}/api/${API_VERSION}/zones/${ZONE_ID}/records")
+  "${POWERADMIN_URL}/api/v2/zones/${ZONE_ID}/records")
 
 CREATE_CODE=$(echo "$CREATE_RESPONSE" | tail -1)
 if [ "$CREATE_CODE" = "201" ] || [ "$CREATE_CODE" = "200" ]; then
@@ -106,11 +89,11 @@ else
 fi
 
 # 4. Verify record exists
-# Records may be wrapped ({"records": [...]}, PowerAdmin 4.3.0+ v2) or flat ([...], v1 and older v2).
+# Records may be wrapped ({"records": [...]}, PowerAdmin 4.3.0+) or flat ([...], 4.2.x).
 echo "--- Verify TXT record exists ---"
 RECORD_ID=$(curl -s \
   -H "X-API-Key: ${API_KEY}" \
-  "${POWERADMIN_URL}/api/${API_VERSION}/zones/${ZONE_ID}/records?type=TXT" | \
+  "${POWERADMIN_URL}/api/v2/zones/${ZONE_ID}/records?type=TXT" | \
   jq -r --arg name "$RECORD_NAME" --arg value "$RECORD_VALUE" \
     '(.data.records? // .data)[] | select(.name == $name and (.content | gsub("^\"|\"$"; "") == $value)) | .id // empty' | head -1)
 
@@ -127,7 +110,7 @@ IDEM_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
   -H "X-API-Key: ${API_KEY}" \
   -H "Content-Type: application/json" \
   -d "{\"name\":\"${RECORD_NAME}\",\"type\":\"TXT\",\"content\":${RECORD_CONTENT},\"ttl\":120,\"priority\":0,\"disabled\":0}" \
-  "${POWERADMIN_URL}/api/${API_VERSION}/zones/${ZONE_ID}/records")
+  "${POWERADMIN_URL}/api/v2/zones/${ZONE_ID}/records")
 
 if [ "$IDEM_CODE" = "201" ] || [ "$IDEM_CODE" = "200" ] || [ "$IDEM_CODE" = "409" ]; then
   pass "Idempotent create handled (HTTP ${IDEM_CODE})"
@@ -139,7 +122,7 @@ fi
 echo "--- Delete TXT records (CleanUp) ---"
 ALL_RECORD_IDS=$(curl -s \
   -H "X-API-Key: ${API_KEY}" \
-  "${POWERADMIN_URL}/api/${API_VERSION}/zones/${ZONE_ID}/records?type=TXT" | \
+  "${POWERADMIN_URL}/api/v2/zones/${ZONE_ID}/records?type=TXT" | \
   jq -r --arg name "$RECORD_NAME" --arg value "$RECORD_VALUE" \
     '(.data.records? // .data)[] | select(.name == $name and (.content | gsub("^\"|\"$"; "") == $value)) | .id')
 
@@ -148,7 +131,7 @@ for rid in $ALL_RECORD_IDS; do
   DELETE_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
     -X DELETE \
     -H "X-API-Key: ${API_KEY}" \
-    "${POWERADMIN_URL}/api/${API_VERSION}/zones/${ZONE_ID}/records/${rid}")
+    "${POWERADMIN_URL}/api/v2/zones/${ZONE_ID}/records/${rid}")
 
   if [ "$DELETE_CODE" != "204" ] && [ "$DELETE_CODE" != "200" ]; then
     DELETE_OK=false
@@ -167,7 +150,7 @@ fi
 echo "--- Verify TXT record deleted ---"
 REMAINING=$(curl -s \
   -H "X-API-Key: ${API_KEY}" \
-  "${POWERADMIN_URL}/api/${API_VERSION}/zones/${ZONE_ID}/records?type=TXT" | \
+  "${POWERADMIN_URL}/api/v2/zones/${ZONE_ID}/records?type=TXT" | \
   jq --arg name "$RECORD_NAME" --arg value "$RECORD_VALUE" \
     '[(.data.records? // .data)[] | select(.name == $name and (.content | gsub("^\"|\"$"; "") == $value))] | length')
 
@@ -175,24 +158,6 @@ if [ "$REMAINING" = "0" ]; then
   pass "TXT record confirmed deleted"
 else
   fail "TXT record still exists after deletion (count: ${REMAINING})"
-fi
-
-# 8. Check v1 API status (if testing v2)
-# Poweradmin below 4.5.0 still serves v1 (200); 4.5.0+ removed it and answers 410 Gone.
-# There is no cheap version probe, so either answer passes and anything else fails.
-if [ "$API_VERSION" = "v2" ]; then
-  echo "--- Check v1 API status ---"
-  V1_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
-    -H "X-API-Key: ${API_KEY}" \
-    "${POWERADMIN_URL}/api/v1/zones")
-
-  if [ "$V1_CODE" = "200" ]; then
-    pass "V1 API reachable (HTTP 200, Poweradmin below 4.5.0)"
-  elif [ "$V1_CODE" = "410" ]; then
-    pass "V1 API removed (HTTP 410, Poweradmin 4.5.0+)"
-  else
-    fail "V1 API returned HTTP ${V1_CODE} (expected 200 below 4.5.0 or 410 on 4.5.0+)"
-  fi
 fi
 
 # Summary
