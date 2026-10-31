@@ -74,8 +74,8 @@ updates:
       timezone: "Europe/Vilnius"
     cooldown:
       default-days: 3
-    # Only the golang and alpine base images live here; they are always
-    # reviewed together, so a single PR is easier than two.
+    # golang/alpine (Dockerfile) and the distroless release base
+    # (Dockerfile.goreleaser) are reviewed together in a single PR.
     groups:
       base-images:
         patterns:

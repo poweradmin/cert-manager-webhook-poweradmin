@@ -70,7 +70,7 @@ jobs:
       - name: Build snapshot image
         uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7
         with:
-          version: latest
+          version: v2.19.0
           # Only the image is needed here for the Trivy scan below; SBOM has its
           # own job and signing is irrelevant for a throwaway snapshot. Skipping
           # both drops the syft/cosign downloads that flake on GitHub 504s.
