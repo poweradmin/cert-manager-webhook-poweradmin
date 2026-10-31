@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.2.19](https://github.com/poweradmin/cert-manager-webhook-poweradmin/compare/v0.2.18...v0.2.19) (2026-10-31)
+
+
+### Bug Fixes
+
+* move container base to distroless static-debian13 for tzdata and ca-certificates fixes ([#170](https://github.com/poweradmin/cert-manager-webhook-poweradmin/issues/170)) ([e613004](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/e61300458efd2b914bf29a02df0415e092671835))
+
+
+### Dependency Updates
+
+* update Go to 1.27.3, cert-manager to v1.21.3 and k8s.io to v0.37.2 ([#172](https://github.com/poweradmin/cert-manager-webhook-poweradmin/issues/172)) ([e429fce](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/e429fce3fc733c645ae20f3265e6b36d9af5aeee))
+
 ## [0.2.18](https://github.com/poweradmin/cert-manager-webhook-poweradmin/compare/v0.2.17...v0.2.18) (2026-10-24)
 
 
