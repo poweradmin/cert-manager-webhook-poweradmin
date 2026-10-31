@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.20](https://github.com/poweradmin/cert-manager-webhook-poweradmin/compare/v0.2.19...v0.2.20) (2026-10-31)
+
+
+### Dependency Updates
+
+* bump golang.org/x/net to v0.62.0 for CVE-2026-78661 and CVE-2026-97045 ([#175](https://github.com/poweradmin/cert-manager-webhook-poweradmin/issues/175)) ([0cbd043](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/0cbd043fa4a229696297c7d7342f65a035a9b101))
+
 ## [0.2.19](https://github.com/poweradmin/cert-manager-webhook-poweradmin/compare/v0.2.18...v0.2.19) (2026-10-31)
 
 
