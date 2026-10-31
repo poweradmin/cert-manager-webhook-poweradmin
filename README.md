@@ -12,14 +12,14 @@ A [cert-manager](https://cert-manager.io/) webhook for [PowerAdmin](https://www.
 
 | Webhook Version | Poweradmin Version                          | cert-manager | Kubernetes |
 |-----------------|---------------------------------------------|--------------|------------|
-| 0.3.0+          | 4.2.0+ (v2 API only), 4.3.0+ incl. PowerDNS API backend | >= 1.0 | >= 1.25 |
-| 0.2.0–0.2.x     | 4.1.0 - 4.5.x (v2 API since 4.2.0, v1 API below 4.5.0 only), 4.3.0+ incl. PowerDNS API backend | >= 1.0 | >= 1.25 |
-| 0.1.6+          | 4.1.0 - 4.4.x (v1 API), 4.2.0+ (v2 API), 4.3.0+ | >= 1.0       | >= 1.25    |
-| 0.1.0–0.1.5     | 4.1.0 - 4.4.x (v1 API), 4.2.0+ (v2 API)    | >= 1.0       | >= 1.25    |
+| 0.3.0+          | 4.1.0+ (v2 API only), 4.3.0+ incl. PowerDNS API backend | >= 1.0 | >= 1.25 |
+| 0.2.0–0.2.x     | 4.1.0 - 4.5.x (v2 API since 4.1.0, v1 API below 4.5.0 only), 4.3.0+ incl. PowerDNS API backend | >= 1.0 | >= 1.25 |
+| 0.1.6+          | 4.1.0 - 4.4.x (v1 API), 4.1.0+ (v2 API), 4.3.0+ | >= 1.0       | >= 1.25    |
+| 0.1.0–0.1.5     | 4.1.0 - 4.4.x (v1 API), 4.1.0+ (v2 API)    | >= 1.0       | >= 1.25    |
 
 > **API v1 support was removed in 0.3.0**, following its removal in Poweradmin
 > 4.5.0. Set `apiVersion: "v2"` (the default) or drop the field; `"v1"` now fails
-> with an error. Poweradmin 4.1.x (v1 only) needs webhook 0.2.x.
+> with an error. Poweradmin has served API v2 since 4.1.0.
 
 ## Prerequisites
 
@@ -147,9 +147,8 @@ spec:
 
 - **API v1 is no longer supported.** Remove `apiVersion: "v1"` from your
   Issuer/ClusterIssuer solver config or set it to `"v2"`; with `"v1"` every
-  challenge fails with an error telling you to switch. Requires Poweradmin
-  4.2.0 or newer. Poweradmin 4.1.x only has API v1, so stay on webhook 0.2.x
-  until you upgrade Poweradmin.
+  challenge fails with an error telling you to switch. Every supported
+  Poweradmin version (4.1.0+) serves API v2.
 
 ## Upgrading to 0.2.x
 
