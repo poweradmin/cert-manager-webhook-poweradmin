@@ -1,6 +1,6 @@
 module github.com/cert-manager/cert-manager-webhook-poweradmin
 
-go 1.26.10
+go 1.27.3
 
 require (
 	github.com/cert-manager/cert-manager v1.21.3
