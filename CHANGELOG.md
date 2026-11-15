@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.3.1](https://github.com/poweradmin/cert-manager-webhook-poweradmin/compare/v0.3.0...v0.3.1) (2026-11-15)
+
+
+### Bug Fixes
+
+* **deps:** bump go to 1.27.4 for GO-2026-6859 ([#186](https://github.com/poweradmin/cert-manager-webhook-poweradmin/issues/186)) ([d54b0be](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/d54b0be044268d07fb18b8150fcb065fa979fcf1))
+
+
+### Dependency Updates
+
+* bump go.opentelemetry.io/otel/sdk from 1.45.0 to 1.47.0 ([#182](https://github.com/poweradmin/cert-manager-webhook-poweradmin/issues/182)) ([aa81946](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/aa819462234f3d15ba209a6b8b33beab14e08d10))
+* bump the base-images group across 1 directory with 3 updates ([#185](https://github.com/poweradmin/cert-manager-webhook-poweradmin/issues/185)) ([f893c33](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/f893c33859fbfd1c3491f1a4825cd6ae2377e383))
+
 ## [0.3.0](https://github.com/poweradmin/cert-manager-webhook-poweradmin/compare/v0.2.20...v0.3.0) (2026-10-31)
 
 
