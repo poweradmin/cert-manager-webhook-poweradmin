@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/cert-manager/cert-manager/pkg/acme/webhook"
@@ -64,15 +65,6 @@ func (m *mockDNSProvider) GetZones(_ context.Context) ([]poweradmin.Zone, error)
 		return nil, m.getZonesErr
 	}
 	return m.zones, nil
-}
-
-func (m *mockDNSProvider) GetZoneByName(_ context.Context, name string) (*poweradmin.Zone, error) {
-	for _, z := range m.zones {
-		if z.Name == name {
-			return &z, nil
-		}
-	}
-	return nil, fmt.Errorf("zone %q not found", name)
 }
 
 func (m *mockDNSProvider) ListTXTRecords(_ context.Context, zoneID int) ([]poweradmin.Record, error) {
@@ -553,8 +545,9 @@ func TestCaseInsensitiveMatching(t *testing.T) {
 }
 
 // A disabled record is not served by DNS, so it must not satisfy the
-// idempotency check; CleanUp still removes it.
-func TestPresent_IgnoresDisabledRecord(t *testing.T) {
+// idempotency check. PowerAdmin's duplicate check counts it, so Present
+// deletes it before creating the live record.
+func TestPresent_ReplacesDisabledRecord(t *testing.T) {
 	mock := newMockDNSProvider([]poweradmin.Zone{{ID: 1, Name: "example.com"}})
 	s := newSolverWithMock(mock)
 
@@ -565,15 +558,37 @@ func TestPresent_IgnoresDisabledRecord(t *testing.T) {
 	if err := s.Present(newChallenge("test-token")); err != nil {
 		t.Fatalf("Present() error = %v", err)
 	}
+	if len(mock.deleteRecordCalls) != 1 || mock.deleteRecordCalls[0].RecordID != "100" {
+		t.Errorf("expected Present to delete disabled record 100, got %+v", mock.deleteRecordCalls)
+	}
 	if len(mock.createRecordCalls) != 1 {
-		t.Errorf("expected 1 create call despite disabled record, got %d", len(mock.createRecordCalls))
+		t.Errorf("expected 1 create call after removing disabled record, got %d", len(mock.createRecordCalls))
 	}
 
 	if err := s.CleanUp(newChallenge("test-token")); err != nil {
 		t.Fatalf("CleanUp() error = %v", err)
 	}
-	if len(mock.deleteRecordCalls) != 2 {
-		t.Errorf("expected CleanUp to delete both disabled and active records, got %d deletes", len(mock.deleteRecordCalls))
+	if len(mock.deleteRecordCalls) != 2 || len(mock.records[1]) != 0 {
+		t.Errorf("expected CleanUp to delete the live record, got %d deletes, %d left", len(mock.deleteRecordCalls), len(mock.records[1]))
+	}
+}
+
+// A disabled record that cannot be deleted must fail Present rather than
+// attempt a create that PowerAdmin would refuse as a duplicate.
+func TestPresent_DisabledRecordDeleteError(t *testing.T) {
+	mock := newMockDNSProvider([]poweradmin.Zone{{ID: 1, Name: "example.com"}})
+	mock.deleteRecordErr = fmt.Errorf("boom")
+	s := newSolverWithMock(mock)
+
+	mock.addRecord(1, poweradmin.Record{
+		ID: "100", Name: testACMEFQDN, Type: "TXT", Content: `"test-token"`, TTL: 120, Disabled: true,
+	})
+
+	if err := s.Present(newChallenge("test-token")); err == nil {
+		t.Fatal("Present() expected error when disabled record cannot be deleted")
+	}
+	if len(mock.createRecordCalls) != 0 {
+		t.Errorf("expected no create call, got %d", len(mock.createRecordCalls))
 	}
 }
 
@@ -591,6 +606,29 @@ func TestPresent_TTLOverride(t *testing.T) {
 	}
 	if len(mock.createRecordCalls) != 1 || mock.createRecordCalls[0].TTL != 300 {
 		t.Errorf("create calls = %+v, want 1 call with TTL 300", mock.createRecordCalls)
+	}
+}
+
+func TestPresent_MissingSecretRef(t *testing.T) {
+	tests := []struct {
+		name string
+		ref  string
+	}{
+		{"missing ref", ``},
+		{"empty name", `,"apiKeySecretRef":{"key":"api-key"}`},
+		{"empty key", `,"apiKeySecretRef":{"name":"poweradmin-api-key"}`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := newSolverWithMock(newMockDNSProvider(nil))
+			ch := newChallenge("test-token")
+			ch.Config = &extapi.JSON{Raw: []byte(`{"serverURL":"https://pa.example.com"` + tt.ref + `}`)}
+
+			err := s.Present(ch)
+			if err == nil || !strings.Contains(err.Error(), "apiKeySecretRef") {
+				t.Errorf("Present() error = %v, want apiKeySecretRef validation error", err)
+			}
+		})
 	}
 }
 

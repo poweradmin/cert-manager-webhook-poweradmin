@@ -67,6 +67,9 @@ func (s *PowerAdminSolver) resolveChallenge(ch *v1alpha1.ChallengeRequest) (*cha
 	if cfg.ServerURL == "" {
 		return nil, fmt.Errorf("serverURL must be specified in solver config")
 	}
+	if cfg.APIKeySecretRef.Name == "" || cfg.APIKeySecretRef.Key == "" {
+		return nil, fmt.Errorf("apiKeySecretRef.name and apiKeySecretRef.key must be specified in solver config")
+	}
 
 	apiKey, err := s.getAPIKey(cfg, ch.ResourceNamespace)
 	if err != nil {
@@ -107,22 +110,30 @@ func (s *PowerAdminSolver) resolveChallenge(ch *v1alpha1.ChallengeRequest) (*cha
 	}, nil
 }
 
+// matches reports whether r is this challenge's TXT record. Content is
+// normalized because the API may return quoted or unquoted values.
+func (cc *challengeContext) matches(r poweradmin.Record) bool {
+	return strings.EqualFold(r.Name, cc.fqdn) &&
+		poweradmin.NormalizeTXTContent(r.Content) == poweradmin.NormalizeTXTContent(cc.txtKey)
+}
+
 func (s *PowerAdminSolver) Present(ch *v1alpha1.ChallengeRequest) error {
 	cc, err := s.resolveChallenge(ch)
 	if err != nil {
 		return err
 	}
 
-	// Check idempotency: if a matching record already exists, skip creation.
-	// Normalize TXT content for comparison since the API may return quoted or unquoted values.
-	// Disabled records are not served by DNS and cannot satisfy the challenge,
-	// so they don't count as existing.
+	// Skip creation if an enabled matching record exists. A disabled one is not
+	// served, yet PowerAdmin's duplicate check still counts it, so delete it first.
 	for _, r := range cc.records {
-		if r.Disabled {
+		if !cc.matches(r) {
 			continue
 		}
-		if strings.EqualFold(r.Name, cc.fqdn) && poweradmin.NormalizeTXTContent(r.Content) == poweradmin.NormalizeTXTContent(cc.txtKey) {
+		if !r.Disabled {
 			return nil
+		}
+		if err := cc.client.DeleteRecord(context.Background(), cc.zone.ID, r.ID); err != nil {
+			return fmt.Errorf("failed to delete disabled TXT record %q for %q in zone %q: %w", r.ID, cc.fqdn, cc.zone.Name, err)
 		}
 	}
 
@@ -151,7 +162,7 @@ func (s *PowerAdminSolver) CleanUp(ch *v1alpha1.ChallengeRequest) error {
 	}
 
 	for _, r := range cc.records {
-		if strings.EqualFold(r.Name, cc.fqdn) && poweradmin.NormalizeTXTContent(r.Content) == poweradmin.NormalizeTXTContent(cc.txtKey) {
+		if cc.matches(r) {
 			if err := cc.client.DeleteRecord(context.Background(), cc.zone.ID, r.ID); err != nil {
 				return fmt.Errorf("failed to delete TXT record %q for %q in zone %q: %w", r.ID, cc.fqdn, cc.zone.Name, err)
 			}
