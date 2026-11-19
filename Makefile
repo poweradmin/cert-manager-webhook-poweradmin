@@ -9,6 +9,7 @@ OUT := $(shell pwd)/_out
 
 HELM_FILES := $(shell find deploy/cert-manager-webhook-poweradmin)
 
+.PHONY: test
 test: setup-envtest
 	TEST_ASSET_ETCD=$(LOCALBIN)/k8s/$(ENVTEST_K8S_VERSION)-$(OS)-$(ARCH)/etcd \
 	TEST_ASSET_KUBE_APISERVER=$(LOCALBIN)/k8s/$(ENVTEST_K8S_VERSION)-$(OS)-$(ARCH)/kube-apiserver \

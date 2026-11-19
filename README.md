@@ -181,7 +181,23 @@ make build
 make test-unit
 
 # Run conformance tests (requires envtest)
-make test
+TEST_ZONE_NAME=example.com. make test
+```
+
+The conformance suite applies every manifest in `testdata/poweradmin-solver/`
+and reads the API key from the Secret named in `config.json`. Create it (the
+file is gitignored) and point `serverURL` in `config.json` at your PowerAdmin:
+
+```bash
+cat > testdata/poweradmin-solver/api-key.yaml <<'YAML'
+apiVersion: v1
+kind: Secret
+metadata:
+  name: poweradmin-api-key
+type: Opaque
+stringData:
+  api-key: "pwa_your_api_key_here"
+YAML
 ```
 
 ## Sponsors

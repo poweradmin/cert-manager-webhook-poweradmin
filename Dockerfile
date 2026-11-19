@@ -21,4 +21,6 @@ RUN apk add --no-cache ca-certificates
 
 COPY --from=build /workspace/webhook /usr/local/bin/webhook
 
+USER 65532:65532
+
 ENTRYPOINT ["webhook"]

@@ -2,6 +2,7 @@
 /webhook
 /cert-manager-webhook-poweradmin
 _out/
+testdata/poweradmin-solver/api-key.yaml
 bin/
 
 # IDE
