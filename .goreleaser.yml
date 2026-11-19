@@ -45,7 +45,7 @@ dockers_v2:
       - "docker.io/poweradmin/cert-manager-webhook-poweradmin"
     tags:
       - "{{ .Tag }}"
-      - latest
+      - '{{ if ne (envOrDefault "SKIP_LATEST" "") "true" }}latest{{ end }}'
     labels:
       "org.opencontainers.image.created": "{{.Date}}"
       "org.opencontainers.image.title": "{{.ProjectName}}"

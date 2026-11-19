@@ -22,9 +22,9 @@ jobs:
     name: Release
     runs-on: ubuntu-latest
     if: github.event_name == 'push'
+    # release-please writes with the app token below, not GITHUB_TOKEN
     permissions:
-      contents: write
-      pull-requests: write
+      contents: read
     outputs:
       release_created: ${{ steps.release.outputs.release_created }}
       tag_name: ${{ steps.release.outputs.tag_name }}
@@ -63,7 +63,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-          ref: ${{ inputs.tag || github.ref }}
+          ref: ${{ inputs.tag || needs.release.outputs.tag_name }}
 
       - name: Setup Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
@@ -102,17 +102,17 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CI_COMMIT_TIMESTAMP: ${{ github.event.repository.updated_at }}
-          CI_COMMIT_SHA: ${{ github.sha }}
-          CI_COMMIT_TAG: ${{ inputs.tag || needs.release.outputs.tag_name }}
+          # Rebuilding an old tag must not move the latest image tag backwards
+          SKIP_LATEST: ${{ github.event_name == 'workflow_dispatch' }}
           # ubuntu-26.04 mounts /tmp as a size-capped tmpfs; keep Go build files on disk
           GOTMPDIR: ${{ runner.temp }}
 
   chart:
     name: Publish Helm Chart
     runs-on: ubuntu-latest
-    needs: release
-    if: needs.release.outputs.release_created == 'true'
+    # The chart defaults to the v<appVersion> image; never publish it without that image
+    needs: [release, publish]
+    if: always() && needs.release.outputs.release_created == 'true' && needs.publish.result == 'success'
     permissions:
       contents: read
       packages: write
@@ -121,6 +121,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.release.outputs.tag_name }}
 
       - name: Setup Helm
         uses: azure/setup-helm@2f5e7bc67f1f9972ab16657bb795f36d8f04de0e # v5
