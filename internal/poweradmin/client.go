@@ -17,7 +17,6 @@ import (
 // DNSProvider abstracts PowerAdmin API operations needed for DNS-01 challenges.
 type DNSProvider interface {
 	GetZones(ctx context.Context) ([]Zone, error)
-	GetZoneByName(ctx context.Context, name string) (*Zone, error)
 	ListTXTRecords(ctx context.Context, zoneID int) ([]Record, error)
 	CreateTXTRecord(ctx context.Context, zoneID int, name, content string, ttl int) (*Record, error)
 	DeleteRecord(ctx context.Context, zoneID int, recordID RecordID) error
@@ -114,9 +113,14 @@ func (c *client) doRequest(ctx context.Context, method, path string, body interf
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	respBody, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBytes))
+	// Read one byte past the cap so an oversized body fails clearly instead
+	// of surfacing later as a truncated-JSON parse error.
+	respBody, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBytes+1))
 	if err != nil {
 		return nil, resp.StatusCode, fmt.Errorf("failed to read response body: %w", err)
+	}
+	if len(respBody) > maxResponseBytes {
+		return nil, resp.StatusCode, fmt.Errorf("%s %s: response body exceeds %d bytes", method, pathPrefix+path, maxResponseBytes)
 	}
 
 	return respBody, resp.StatusCode, nil
@@ -142,19 +146,6 @@ func (c *client) GetZones(ctx context.Context) ([]Zone, error) {
 		return nil, fmt.Errorf("failed to parse v2 zones data: %w", err)
 	}
 	return wrapper.Zones, nil
-}
-
-func (c *client) GetZoneByName(ctx context.Context, name string) (*Zone, error) {
-	zones, err := c.GetZones(ctx)
-	if err != nil {
-		return nil, err
-	}
-	for _, z := range zones {
-		if z.Name == name {
-			return &z, nil
-		}
-	}
-	return nil, fmt.Errorf("zone %q not found", name)
 }
 
 func (c *client) ListTXTRecords(ctx context.Context, zoneID int) ([]Record, error) {
@@ -225,6 +216,10 @@ func (c *client) CreateTXTRecord(ctx context.Context, zoneID int, name, content 
 }
 
 func (c *client) DeleteRecord(ctx context.Context, zoneID int, recordID RecordID) error {
+	// An empty ID would hit the collection path, and its 404 would read as success.
+	if recordID == "" {
+		return errors.New("delete record: empty record ID")
+	}
 	// PowerDNS API backend IDs are encoded strings; escape them for the path.
 	path := fmt.Sprintf("/zones/%d/records/%s", zoneID, url.PathEscape(string(recordID)))
 	body, status, err := c.doRequest(ctx, http.MethodDelete, path, nil)

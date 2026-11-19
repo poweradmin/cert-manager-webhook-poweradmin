@@ -148,41 +148,6 @@ func TestServerURLNormalization(t *testing.T) {
 	}
 }
 
-func TestGetZoneByName(t *testing.T) {
-	zones := []Zone{
-		{ID: 1, Name: "example.com"},
-		{ID: 2, Name: "other.com"},
-	}
-
-	handler := func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("X-API-Key") != "test-api-key" {
-			w.WriteHeader(http.StatusUnauthorized)
-			return
-		}
-		if r.URL.Path == "/api/v2/zones" {
-			writeV2ZonesResponse(w, zones)
-			return
-		}
-		w.WriteHeader(http.StatusNotFound)
-	}
-
-	_, client := setupTestServerWithVersion(t, handler, "v2")
-	ctx := context.Background()
-
-	zone, err := client.GetZoneByName(ctx, "example.com")
-	if err != nil {
-		t.Fatalf("GetZoneByName() error = %v", err)
-	}
-	if zone.ID != 1 || zone.Name != "example.com" {
-		t.Errorf("GetZoneByName() = %+v, want ID=1 Name=example.com", zone)
-	}
-
-	_, err = client.GetZoneByName(ctx, "notfound.com")
-	if err == nil {
-		t.Error("GetZoneByName() expected error for missing zone")
-	}
-}
-
 func TestListTXTRecords(t *testing.T) {
 	records := []Record{
 		{ID: "10", Name: "_acme-challenge.example.com", Type: "TXT", Content: "\"test-key\"", TTL: 120},
@@ -447,6 +412,62 @@ func TestDeleteRecord_NotFoundIsIdempotent(t *testing.T) {
 	_, client := setupTestServerWithVersion(t, handler, "v2")
 	if err := client.DeleteRecord(context.Background(), 1, "999"); err != nil {
 		t.Errorf("expected nil (idempotent) for 404 on delete, got: %v", err)
+	}
+}
+
+// An empty ID must not reach the server: the collection path's 404 would be
+// read as "already gone" and leave the record behind.
+func TestDeleteRecord_EmptyID(t *testing.T) {
+	called := false
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		w.WriteHeader(http.StatusNotFound)
+	}
+
+	_, client := setupTestServerWithVersion(t, handler, "v2")
+	if err := client.DeleteRecord(context.Background(), 1, ""); err == nil {
+		t.Error("expected error for empty record ID")
+	}
+	if called {
+		t.Error("expected no request for empty record ID")
+	}
+}
+
+// A body over the cap must fail with an explicit size error rather than a
+// truncated-JSON parse error; a body exactly at the cap is still accepted.
+func TestResponseSizeCap(t *testing.T) {
+	envelope := func(size int) []byte {
+		prefix := `{"success":true,"data":{"zones":[]},"message":"`
+		suffix := `"}`
+		return []byte(prefix + strings.Repeat("x", size-len(prefix)-len(suffix)) + suffix)
+	}
+
+	tests := []struct {
+		name    string
+		size    int
+		wantErr bool
+	}{
+		{"at cap", maxResponseBytes, false},
+		{"over cap", maxResponseBytes + 1, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			body := envelope(tt.size)
+			handler := func(w http.ResponseWriter, r *http.Request) {
+				_, _ = w.Write(body)
+			}
+			_, client := setupTestServerWithVersion(t, handler, "v2")
+			_, err := client.GetZones(context.Background())
+			if tt.wantErr {
+				if err == nil || !strings.Contains(err.Error(), "exceeds") {
+					t.Errorf("GetZones() error = %v, want size error", err)
+				}
+				return
+			}
+			if err != nil {
+				t.Errorf("GetZones() error = %v, want nil", err)
+			}
+		})
 	}
 }
 
