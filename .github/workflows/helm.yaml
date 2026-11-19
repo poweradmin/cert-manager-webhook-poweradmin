@@ -33,5 +33,10 @@ jobs:
 
       - name: Template chart
         run: |
-          helm template cert-manager-webhook-poweradmin deploy/cert-manager-webhook-poweradmin \
-            --set groupName=acme.example.com
+          chart=deploy/cert-manager-webhook-poweradmin
+          helm template test "$chart" --set groupName=acme.example.com
+          helm template test "$chart" --set service.port=8443
+          helm template test "$chart" \
+            --set 'rbac.secretReader.additionalNamespaces={team-a,team-b}' \
+            --set 'rbac.secretReader.secretNames={poweradmin-api-key}'
+          helm template test "$chart" --set rbac.secretReader.clusterScope=true

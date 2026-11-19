@@ -40,6 +40,13 @@ stringData:
   api-key: "pwa_your_api_key_here"
 ```
 
+> **Note:** The webhook can only read Secrets in the cert-manager namespace by
+> default (`certManager.namespace`, covers ClusterIssuers). If a namespaced
+> Issuer references a Secret in another namespace, add that namespace to
+> `rbac.secretReader.additionalNamespaces`. You can further restrict access to
+> specific Secret names with `rbac.secretReader.secretNames`, or restore
+> cluster-wide access with `rbac.secretReader.clusterScope=true` (not recommended).
+
 ### 2. Configure ClusterIssuer
 
 ```yaml
@@ -93,13 +100,21 @@ spec:
 | `groupName` | `acme.yourdomain.com` | API group name (must match Issuer config) |
 | `replicaCount` | `1` | Number of webhook replicas |
 | `image.repository` | `ghcr.io/poweradmin/cert-manager-webhook-poweradmin` | Container image repository |
-| `image.tag` | `latest` | Container image tag |
+| `image.tag` | `""` | Container image tag; empty uses `v` + chart `appVersion` |
 | `image.pullPolicy` | `IfNotPresent` | Image pull policy |
+| `nameOverride` | `""` | Override the chart name |
+| `fullnameOverride` | `""` | Override the full resource name |
 | `certManager.namespace` | `cert-manager` | cert-manager namespace |
 | `certManager.serviceAccountName` | `cert-manager` | cert-manager service account |
+| `rbac.secretReader.additionalNamespaces` | `[]` | Extra namespaces where the webhook may read API-key Secrets |
+| `rbac.secretReader.secretNames` | `[]` | Restrict readable Secrets to these names |
+| `rbac.secretReader.clusterScope` | `false` | Grant cluster-wide Secret read access (not recommended) |
 | `service.type` | `ClusterIP` | Service type |
-| `service.port` | `443` | Service port |
-| `resources` | `{}` | CPU/memory resource requests and limits |
+| `service.port` | `443` | Service port (also used by the APIService) |
+| `podSecurityContext` | non-root uid/gid `65532`, `RuntimeDefault` seccomp | Pod security context |
+| `securityContext` | no privilege escalation, read-only root FS, all capabilities dropped | Container security context |
+| `livenessProbe` / `readinessProbe` | HTTPS `GET /healthz` on port `https` | Container probes |
+| `resources` | requests `50m`/`64Mi`, limits `100m`/`128Mi` | CPU/memory resource requests and limits |
 | `nodeSelector` | `{}` | Node selector |
 | `tolerations` | `[]` | Tolerations |
 | `affinity` | `{}` | Affinity rules |
