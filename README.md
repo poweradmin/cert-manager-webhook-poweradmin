@@ -182,6 +182,9 @@ make test-unit
 
 # Run conformance tests (requires envtest)
 TEST_ZONE_NAME=example.com. make test
+
+# Against a private zone, check propagation via its own DNS server
+TEST_ZONE_NAME=example.com. TEST_DNS_SERVER=127.0.0.1:53 make test
 ```
 
 The conformance suite applies every manifest in `testdata/poweradmin-solver/`
