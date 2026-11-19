@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.3.2](https://github.com/poweradmin/cert-manager-webhook-poweradmin/compare/v0.3.1...v0.3.2) (2026-11-19)
+
+
+### Bug Fixes
+
+* **client:** fail clearly on oversized responses and empty record IDs ([203755b](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/203755bea3206274d30407f72c18efb6970f83e2))
+* **solver:** validate secret ref and replace disabled duplicate ([4d43609](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/4d436091ac4e7c74b50e554544b8c33333e2ff86))
+
+
+### Dependency Updates
+
+* refresh golang 1.27.4-alpine digest ([#189](https://github.com/poweradmin/cert-manager-webhook-poweradmin/issues/189)) ([65368f9](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/65368f97f6d8bb4236008ddb936164dd1078b969))
+
+
+### Documentation
+
+* **chart:** sync values table and add helm render cases ([fe526be](https://github.com/poweradmin/cert-manager-webhook-poweradmin/commit/fe526be9538954d830aa6bcd446ff6408f8c3aec))
+
 ## [0.3.1](https://github.com/poweradmin/cert-manager-webhook-poweradmin/compare/v0.3.0...v0.3.1) (2026-11-15)
 
 
